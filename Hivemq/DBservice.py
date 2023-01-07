@@ -18,7 +18,6 @@ class DBService:
     def save(self):
         # Commit your changes in the database
         self.conn.commit()
-    
         # Closing the connection
         self.conn.close()
 
@@ -40,3 +39,17 @@ class DBService:
         cursor.execute(sql, data)
 
         self.save()
+    
+    def fetchDeviceId(self, email):
+        self.start_connection()
+
+        # creating a cursor object
+        cursor = self.conn.cursor()
+        sql = "SELECT * FROM public.user WHERE email = '" + email +"'"
+        print("executing :" + sql)
+        cursor.execute(sql)
+        obj = cursor.fetchone();
+
+        # Closing the connection
+        self.conn.close()
+        return obj

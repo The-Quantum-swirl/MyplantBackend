@@ -1,12 +1,28 @@
 from django.http import HttpResponse
+from django.http import JsonResponse
+import json
+
 from Hivemq.service import MqttClient;
+from Hivemq.DBservice import DBService;
+
 
 client = MqttClient()
 client.listenForDevices()
 
-def index(request):
-    return HttpResponse("Hello, world. You're at the polls index.")
+dbService = DBService()
 
-def getRegisteredDevices(request):
-    return HttpResponse("Hello, world")
+def index(request):
+    return HttpResponse("Hello, world. You're at index page.")
+
+def getDevices(request):
+
+    body = json.loads(request.body)
+    email = body['email']
+    print(email);
+    
+    res = dbService.fetchDeviceId(email);
+
+    print(res[1]);
+    
+    return JsonResponse({'deviceId':res[1]})
     

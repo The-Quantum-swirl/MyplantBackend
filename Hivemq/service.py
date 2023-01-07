@@ -35,10 +35,6 @@ def on_message(client, userdata, msg):
             dbService.insert_data(json_data["email"], json_data["clientId"])
 
         print(str(json_data))
-        
-
-
-    
 
 
 class MqttClient():
