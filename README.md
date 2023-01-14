@@ -1,2 +1,2 @@
 # myplant-backend
-my plant backend using django
+my plant backend using go

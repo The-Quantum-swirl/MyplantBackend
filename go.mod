@@ -1,4 +1,4 @@
-module Documents/MYPLANTBACKEND
+module MYPLANTBACKEND
 
 go 1.19
 
