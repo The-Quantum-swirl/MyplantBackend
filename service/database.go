@@ -1,16 +1,19 @@
 package service
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 
-	_ "github.com/lib/pq"
+	// _ "github.com/lib/pq"
+	_ "github.com/GoogleCloudPlatform/cloudsql-proxy/proxy/dialers/postgres"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type DBConnector struct {
-	// db gorm.DB
-	DB *sql.DB
+	DB *gorm.DB
+	// DB *sql.DB
 }
 
 var connectionName string
@@ -27,17 +30,19 @@ func (c *DBConnector) Start() {
 	dbport = os.Getenv("DB_PORT")
 
 	// connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", connectionName, dbport, dbuser, dbpassword, dbname)
-	connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
+	// connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
+	connString := fmt.Sprintf("host=%s user=%s dbname=%s sslmode=disable password=%s", connectionName, dbuser, dbname, dbpassword)
+
 	fmt.Print(connString)
 
 	var err error
 
-	c.DB, err = sql.Open("postgres", connString)
+	// c.DB, err = sql.Open("postgres", connString)
 
-	// c.db, err = gorm.Open(postgres.New(postgres.Config{
-	// 	DriverName: "cloudsqlpostgres",
-	// 	DSN:        connString,
-	// }))
+	c.DB, err = gorm.Open(postgres.New(postgres.Config{
+		DriverName: "cloudsqlpostgres",
+		DSN:        connString,
+	}))
 
 	// Connect to the Postgres database on Google Cloud SQL
 
