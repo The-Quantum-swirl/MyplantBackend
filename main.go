@@ -48,12 +48,12 @@ func main() {
 	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service"}
 	MqttCon.Start()
 
-	DbCon := &service.DBConnector{DB: nil}
-	DbCon.Start()
+	// DbCon := &service.DBConnector{DB: nil}
+	// DbCon.Start()
 
 	router := gin.Default()
-	router.GET("/todos", func(context *gin.Context) {
-		getTodos(context, DbCon.DB)
-	})
+	// router.GET("/todos", func(context *gin.Context) {
+	// 	getTodos(context, DbCon.DB)
+	// })
 	router.Run("localhost:8080")
 }
