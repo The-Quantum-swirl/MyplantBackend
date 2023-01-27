@@ -55,5 +55,9 @@ func main() {
 	// router.GET("/todos", func(context *gin.Context) {
 	// 	getTodos(context, DbCon.DB)
 	// })
-	router.Run("localhost:8080")
+	router.GET("/", func(context *gin.Context) {
+		message := "Hello, World!"
+		MqttCon.Client.Publish("publish-service", 0, false, message)
+	})
+	router.Run(":8080")
 }

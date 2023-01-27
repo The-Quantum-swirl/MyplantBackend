@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
@@ -27,6 +28,8 @@ var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
 
 var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err error) {
 	fmt.Printf("Connect lost: %v", err)
+	time.Sleep(2 * time.Second)
+	client.Connect()
 }
 
 type MQTTConnector struct {
