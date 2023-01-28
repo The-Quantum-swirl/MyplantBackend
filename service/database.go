@@ -26,13 +26,19 @@ func (c *DBConnector) Start() {
 	dbname = os.Getenv("DB_NAME")
 	dbport = os.Getenv("DB_PORT")
 
-	// connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", connectionName, dbport, dbuser, dbpassword, dbname)
-	connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
-	fmt.Print(connString)
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", connectionName, dbport, dbuser, dbpassword, dbname)
+	// connString := "postgresql://postgres:postgres@localhost/core-service?sslmode=disable"
+	// fmt.Print(connString)
 
 	var err error
 
 	c.DB, err = sql.Open("postgres", connString)
+	err = c.DB.Ping()
+	if err != nil {
+		fmt.Println("Error in connecting to DB") // do something here
+	} else {
+		fmt.Println("Connected Successfully to DB")
+	}
 
 	// c.db, err = gorm.Open(postgres.New(postgres.Config{
 	// 	DriverName: "cloudsqlpostgres",

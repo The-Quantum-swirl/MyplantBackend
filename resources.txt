@@ -1,0 +1,19 @@
+$env:INSTANCE_CONNECTION_NAME="localhost"
+$env:DB_USER="postgres"
+$env:DB_PASS="postgres"
+$env:DB_NAME="postgres"
+$env:DB_PORT="5432"
+
+
+CREATE TABLE "user" (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    device_id VARCHAR(255) NOT NULL,
+    device_type VARCHAR(255) NOT NULL,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    profile_photo_url VARCHAR(255),
+    registered BOOLEAN NOT NULL DEFAULT false,
+    mobile_number VARCHAR(255) NOT NULL
+);
