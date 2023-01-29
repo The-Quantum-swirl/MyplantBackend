@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,7 +10,7 @@ import (
 )
 
 var knt int
-
+var retryCount int
 var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("MSG: %s\n", msg.Payload())
 	fmt.Printf("this is result msg #%d!", knt)
@@ -18,8 +19,22 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	knt++
 }
 
+func processMessagefromNode(msg MQTT.Message) {
+
+	var det Detail
+	message := msg.Payload()
+	json.Unmarshal([]byte(message), &det)
+	fmt.Println(det)
+	// TODO call this function form here
+	// HandleRegisterFromNode()
+}
+
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
+	if "register-service" == msg.Topic() {
+		fmt.Println("saving Device Id to DB")
+		processMessagefromNode(msg)
+	}
 }
 
 var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
@@ -27,14 +42,24 @@ var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
 }
 
 var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err error) {
-	fmt.Printf("Connect lost: %v", err)
+	fmt.Println("Connect lost: ", err)
 	time.Sleep(2 * time.Second)
 	client.Connect()
+	retryCount++
+	if retryCount > 10 {
+		client.Disconnect(2)
+		client.Connect()
+		retryCount = 0
+	}
 }
 
 type MQTTConnector struct {
 	Client MQTT.Client
 	SubCh  string
+}
+type Detail struct {
+	Email    string `json:"email"`
+	ClientId string `json:"clientId"`
 }
 
 const broker string = "tls://fc61e06e9fda466eb883fa570fe337d4.s1.eu.hivemq.cloud"
@@ -44,6 +69,7 @@ const password string = "Quantum#123"
 const baseUrl string = "https://api.telegram.org/bot1638003720:AAG1JD9I4XjQYEkYiUTa7An3rOGiVk9sq4M/sendMessage?chat_id=-568647766&text="
 
 func (c *MQTTConnector) Start() {
+	time.Sleep(3 * time.Second)
 	fmt.Println("MQTTConnector.start()")
 
 	knt = 0

@@ -16,13 +16,13 @@ type user struct {
 	Email           string    `json:"email"`
 	DeviceId        string    `json:"deviceId"`
 	DeviceType      string    `json:"deviceType"`
-	DeviceName      string    `json:"deviceName"`
 	FirstName       string    `json:"firstName"`
 	LastName        string    `json:"lastName"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 	ProfilePhotoUrl string    `json:"profilePhotoUrl"`
 	Registered      bool      `json:"registered"`
 	MobileNumber    string    `json:"mobileNumber"`
+	DeviceName      string    `json:"deviceName"`
 }
 
 // var todos = []todo{
@@ -41,33 +41,35 @@ func getTodos(context *gin.Context, DB *sql.DB) {
 
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&res)
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber, &res.DeviceName)
+		fmt.Println(res)
 		todos = append(todos, res)
 	}
 	context.IndentedJSON(http.StatusOK, todos)
 }
 func findUserByEmailId(context *gin.Context, stmt *sql.Stmt, email string) {
+	// email := context.Param("email")
 	var res user
 	//one liner//
-	err := stmt.QueryRow(1).Scan(&res)
+	err := stmt.QueryRow(email).Scan(&res.ID, &res.Email)
 	// var todos []user
 
 	// rows, err := stmt.Query(email)
 	if err != nil {
 		fmt.Println(err)
-		context.IndentedJSON(http.StatusBadGateway, "An error occured in Finding User")
+		context.IndentedJSON(http.StatusBadGateway, "An error occured in Finding User : "+email)
 	} else {
 		context.IndentedJSON(http.StatusOK, res)
 	}
 }
-func saveUserFunc(context *gin.Context, db *sql.DB, stmt *sql.Stmt, dummyUser user) {
-	_, err := stmt.Exec(dummyUser.Email, dummyUser.DeviceId, dummyUser.DeviceType, dummyUser.FirstName, dummyUser.LastName, dummyUser.UpdatedAt, dummyUser.ProfilePhotoUrl, dummyUser.Registered, dummyUser.MobileNumber)
+func saveUserFunc(context *gin.Context, Db *sql.DB, stmt *sql.Stmt, dummyUser user) {
+	_, err := stmt.Exec(dummyUser.Email, dummyUser.DeviceId, dummyUser.DeviceType, dummyUser.FirstName, dummyUser.LastName, dummyUser.UpdatedAt, dummyUser.ProfilePhotoUrl, dummyUser.Registered, dummyUser.MobileNumber, dummyUser.DeviceName)
 	if err != nil {
 		fmt.Println(err)
 		context.IndentedJSON(http.StatusBadGateway, "An error occured in saving User")
 	}
 	var id int
-	if err := db.QueryRow("SELECT public.user.id FROM user WHERE email = $1", dummyUser.Email).Scan(&id); err != nil {
+	if err := Db.QueryRow("SELECT public.user.id FROM user WHERE email = $1", dummyUser.Email).Scan(&id); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -75,23 +77,44 @@ func saveUserFunc(context *gin.Context, db *sql.DB, stmt *sql.Stmt, dummyUser us
 
 	context.IndentedJSON(http.StatusOK, "User Saved Successfully")
 }
+func runQuery(context *gin.Context, Db *sql.DB) {
+	var res user
+
+	stmt, err := Db.Prepare(`SELECT * FROM public.user where email = 'john.doe@example.com'`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber, &res.DeviceName)
+		fmt.Println(res)
+	}
+	if err = rows.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+func HandleRegisterFromNode() {
+
+}
 
 func main() {
 
-	// MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service"}
-	// MqttCon.Start()
-
 	DbCon := &service.DBConnector{DB: nil}
 	DbCon.Start()
-	db := DbCon.DB
-	fetchUserByEmail, err := db.Prepare(`SELECT * FROM public.user where email = $1`)
+	Db := DbCon.DB
+	fetchUserByEmail, err := Db.Prepare(`SELECT id, email FROM public.user where email = $1;`)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer fetchUserByEmail.Close()
 
-	saveUser, err := db.Prepare(`INSERT INTO public.user (email, device_id, device_type, first_name, last_name, updated_at, profile_photo_url, registered, mobile_number)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	saveUser, err := Db.Prepare(`INSERT INTO public.user (email, device_id, device_type, first_name, last_name, updated_at, profile_photo_url, registered, mobile_number,device_name)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id`)
 	if err != nil {
 		fmt.Println(err)
@@ -99,11 +122,14 @@ func main() {
 	}
 	defer saveUser.Close()
 
+	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service"}
+	MqttCon.Start()
+
 	router := gin.Default()
 	router.GET("/todos", func(context *gin.Context) {
 		getTodos(context, DbCon.DB)
 	})
-	// router.GET("/", func(context *gin.Context) {
+	// router.GET("/publishTest", func(context *gin.Context) {
 	// 	message := "Hello, World!"
 	// 	MqttCon.Client.Publish("publish-service", 0, false, message)
 	// })
@@ -121,13 +147,16 @@ func main() {
 			Registered:      true,
 			MobileNumber:    "555-555-5555",
 		}
-		saveUserFunc(context, db, saveUser, dummyUser)
+		saveUserFunc(context, Db, saveUser, dummyUser)
 	})
 
 	router.GET("/fetchUser/:email", func(context *gin.Context) {
 		email := context.Param("email")
 		fmt.Println("searching for : " + email)
 		findUserByEmailId(context, fetchUserByEmail, email)
+	})
+	router.GET("/query", func(context *gin.Context) {
+		runQuery(context, Db)
 	})
 	router.Run(":8080")
 }

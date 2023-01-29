@@ -28,7 +28,7 @@ func (c *DBConnector) Start() {
 
 	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", connectionName, dbport, dbuser, dbpassword, dbname)
 	// connString := "postgresql://postgres:postgres@localhost/core-service?sslmode=disable"
-	// fmt.Print(connString)
+	fmt.Print(connString)
 
 	var err error
 
@@ -51,11 +51,6 @@ func (c *DBConnector) Start() {
 		fmt.Println(err)
 	}
 
-}
-
-type User struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
 }
 
 // func (c *DBConnector) GetUser() {
