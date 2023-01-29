@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
@@ -22,16 +23,16 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 func processMessagefromNode(msg MQTT.Message) {
 
 	var det Detail
-	message := msg.Payload()
-	json.Unmarshal([]byte(message), &det)
-	fmt.Println(det)
+	json.Unmarshal([]byte(msg.Payload()), &det)
+	fmt.Println(det.ClientId)
+	fmt.Println(det.Email)
 	// TODO call this function form here
-	// HandleRegisterFromNode()
+	// HandleRegisterFromNode(det.Email, det.ClientId)
 }
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
-	if "register-service" == msg.Topic() {
+	if strings.Compare("register-service1", msg.Topic()) == 0 {
 		fmt.Println("saving Device Id to DB")
 		processMessagefromNode(msg)
 	}
@@ -43,14 +44,14 @@ var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
 
 var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err error) {
 	fmt.Println("Connect lost: ", err)
-	time.Sleep(2 * time.Second)
+	// time.Sleep(2 * time.Second)
 	client.Connect()
-	retryCount++
-	if retryCount > 10 {
-		client.Disconnect(2)
-		client.Connect()
-		retryCount = 0
-	}
+	// retryCount++
+	// if retryCount > 10 {
+	// 	client.Disconnect(2)
+	// 	client.Connect()
+	// 	retryCount = 0
+	// }
 }
 
 type MQTTConnector struct {
@@ -76,14 +77,14 @@ func (c *MQTTConnector) Start() {
 	// configure the mqtt client
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("%s:%d", broker, port))
-	opts.SetClientID("backend")
+	opts.SetClientID("backend1")
 	opts.SetUsername(username)
 	opts.SetPassword(password)
 	opts.SetDefaultPublishHandler(messagePubHandler)
 	opts.OnConnectionLost = connectLostHandler
 	opts.OnConnect = func(cl MQTT.Client) {
 		// on connect will subscribe to default topic
-		if token := cl.Subscribe(c.SubCh, 0, f); token.Wait() && token.Error() != nil {
+		if token := cl.Subscribe(c.SubCh, 0, messagePubHandler); token.Wait() && token.Error() != nil {
 			panic(token.Error())
 		}
 	}

@@ -103,6 +103,8 @@ func HandleRegisterFromNode() {
 }
 
 func main() {
+	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service1"}
+	MqttCon.Start()
 
 	DbCon := &service.DBConnector{DB: nil}
 	DbCon.Start()
@@ -122,17 +124,15 @@ func main() {
 	}
 	defer saveUser.Close()
 
-	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service"}
-	MqttCon.Start()
-
 	router := gin.Default()
 	router.GET("/todos", func(context *gin.Context) {
 		getTodos(context, DbCon.DB)
 	})
-	// router.GET("/publishTest", func(context *gin.Context) {
-	// 	message := "Hello, World!"
-	// 	MqttCon.Client.Publish("publish-service", 0, false, message)
-	// })
+
+	router.GET("/publishTest", func(context *gin.Context) {
+		message := "Hello, World!"
+		MqttCon.Client.Publish("publish-service", 0, false, message)
+	})
 
 	router.POST("/saveUser", func(context *gin.Context) {
 		dummyUser := user{
