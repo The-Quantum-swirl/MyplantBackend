@@ -25,6 +25,13 @@ type user struct {
 	DeviceName      string    `json:"deviceName"`
 }
 
+type UserRequestBody struct {
+	Email     string
+	PhotoUrl  string
+	FirstName string
+	LastName  string
+}
+
 // var todos = []todo{
 // 	{ID: "1", Item: "Clean Room", Completed: false},
 // 	{ID: "2", Item: "Read Book", Completed: true},
@@ -149,6 +156,36 @@ func main() {
 			MobileNumber:    "555-555-5555",
 		}
 		saveUserFunc(context, Db, saveUser, dummyUser)
+	})
+
+	router.POST("/saveUserDetails", func(context *gin.Context) {
+		var requestBody UserRequestBody
+		if err := context.BindJSON(&requestBody); err != nil {
+			fmt.Println(err)
+		}
+
+		userToBeSaved := user{
+			Email:           requestBody.Email,
+			FirstName:       requestBody.FirstName,
+			LastName:        requestBody.LastName,
+			UpdatedAt:       time.Now(),
+			ProfilePhotoUrl: requestBody.PhotoUrl,
+			Registered:      true,
+		}
+
+		var res user
+		err := Db.QueryRow(requestBody.Email).Scan(&res.ID, &res.Email)
+		if err != nil {
+			fmt.Println(err)
+		}
+		if res.Email == requestBody.Email {
+			fmt.Print(res)
+			saveUserFunc(context, Db, saveUser, userToBeSaved)
+			context.IndentedJSON(http.StatusOK, "Saved")
+
+		} else {
+			context.IndentedJSON(http.StatusAlreadyReported, "User already there")
+		}
 	})
 
 	router.GET("/fetchUser/:email", func(context *gin.Context) {
