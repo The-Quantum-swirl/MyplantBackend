@@ -11,8 +11,7 @@ import (
 )
 
 var knt int
-var retryCount int
-var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
+var handleMQTTMessage MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("MSG: %s\n", msg.Payload())
 	fmt.Printf("this is result msg #%d!", knt)
 	message := fmt.Sprintf("Message: %s", msg.Payload())
@@ -20,15 +19,17 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	knt++
 }
 
-func processMessagefromNode(msg MQTT.Message) {
-	DbCon1 := &DBConnector{DB: nil}
-	DbCon1.Start()
+func processNodeRegistration(msg MQTT.Message) {
 	var det Detail
-	json.Unmarshal([]byte(msg.Payload()), &det)
-	fmt.Println(det.ClientId)
-	fmt.Println(det.Email)
-	var Mq = &MQTTConnector{DBCon: DbCon1}
-	Mq.DBCon.HandleRegisterFromNodeDb(det.Email, det.ClientId)
+	err := json.Unmarshal([]byte(msg.Payload()), &det)
+	if err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+		return
+	}
+
+	db := DBConnector{DB: nil}
+	db.Start()
+	db.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
 	
 
@@ -36,7 +37,7 @@ var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Me
 	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
 	if strings.Compare("register-service1", msg.Topic()) == 0 {
 		fmt.Println("saving Device Id to DB")
-		processMessagefromNode(msg)
+		processNodeRegistration(msg)
 	}
 }
 
@@ -46,7 +47,6 @@ var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
 
 var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err error) {
 	fmt.Println("Connect lost: ", err)
-	// time.Sleep(2 * time.Second)
 	client.Connect()
 }
 

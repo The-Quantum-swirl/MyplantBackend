@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 )
 
 type DBConnector struct {
-	// db gorm.DB
 	DB *sql.DB
 }
 
@@ -20,6 +20,19 @@ var dbpassword string
 var dbname string
 var dbport string
 
+var saveUserStmt *sql.Stmt
+
+func init() {
+	log.Output(1, "Init main Called ")
+}
+func (c *DBConnector) init() {
+	log.Output(1, "Init called")
+	var err error
+	saveUserStmt, err = c.prepareSaveNewUserStmt()
+	if err != nil {
+		fmt.Println(err)
+	}
+}
 func (c *DBConnector) Start() {
 	connectionName = os.Getenv("INSTANCE_CONNECTION_NAME")
 	dbuser = os.Getenv("DB_USER")
@@ -35,22 +48,13 @@ func (c *DBConnector) Start() {
 
 	c.DB, err = sql.Open("postgres", connString)
 	if err != nil {
-		fmt.Println("Error in Initialising DB")
+		fmt.Errorf("error initializing the database: %v", err)
 	}
+
 	err = c.DB.Ping()
 	if err != nil {
-		fmt.Println("Error in connecting to DB") // do something here
-	} else {
-		fmt.Println("Connected Successfully to DB")
+		fmt.Errorf("error connecting to the database: %v", err)
 	}
-
-	// c.db, err = gorm.Open(postgres.New(postgres.Config{
-	// 	DriverName: "cloudsqlpostgres",
-	// 	DSN:        connString,
-	// }))
-
-	// Connect to the Postgres database on Google Cloud SQL
-
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -77,6 +81,7 @@ func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
 		return fmt.Errorf("email not found: %s", email)
 	}
 
+	defer c.DB.Close()
 	return nil
 }
 
@@ -93,20 +98,26 @@ func (c *DBConnector) saveNewUser(clientId, email string) error {
 		Registered:      false,
 		MobileNumber:    "555-555-5555",
 	}
+	query := `INSERT INTO public.user (email, device_id, device_type, first_name, last_name, updated_at, profile_photo_url, registered, mobile_number,device_name)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING id`
+	_, err := c.DB.Exec(query, dummyUser.Email, dummyUser.DeviceId, dummyUser.DeviceType, dummyUser.FirstName, dummyUser.LastName, dummyUser.UpdatedAt, dummyUser.ProfilePhotoUrl, dummyUser.Registered, dummyUser.MobileNumber, dummyUser.DeviceName)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	fmt.Println("User Added Sucessfully")
+	return nil
+}
+func (c *DBConnector) prepareSaveNewUserStmt() (*sql.Stmt, error) {
 	saveUser, err := c.DB.Prepare(`INSERT INTO public.user (email, device_id, device_type, first_name, last_name, updated_at, profile_photo_url, registered, mobile_number,device_name)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id`)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return nil, err
 	}
-	defer saveUser.Close()
-	_, err1 := saveUser.Exec(dummyUser.Email, dummyUser.DeviceId, dummyUser.DeviceType, dummyUser.FirstName, dummyUser.LastName, dummyUser.UpdatedAt, dummyUser.ProfilePhotoUrl, dummyUser.Registered, dummyUser.MobileNumber, dummyUser.DeviceName)
-	if err1 != nil {
-		fmt.Println(err)
-	}
-	fmt.Print("User Saved Successfully")
-	return nil
+	return saveUser, nil
 }
 
 type user struct {
