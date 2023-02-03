@@ -21,14 +21,16 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 }
 
 func processMessagefromNode(msg MQTT.Message) {
-
+	DbCon1 := &DBConnector{DB: nil}
+	DbCon1.Start()
 	var det Detail
 	json.Unmarshal([]byte(msg.Payload()), &det)
 	fmt.Println(det.ClientId)
 	fmt.Println(det.Email)
-	// TODO call this function form here
-	// HandleRegisterFromNode(det.Email, det.ClientId)
+	var Mq = &MQTTConnector{DBCon: DbCon1}
+	Mq.DBCon.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
+	
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
@@ -46,17 +48,12 @@ var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err
 	fmt.Println("Connect lost: ", err)
 	// time.Sleep(2 * time.Second)
 	client.Connect()
-	// retryCount++
-	// if retryCount > 10 {
-	// 	client.Disconnect(2)
-	// 	client.Connect()
-	// 	retryCount = 0
-	// }
 }
 
 type MQTTConnector struct {
 	Client MQTT.Client
 	SubCh  string
+	DBCon  *DBConnector
 }
 type Detail struct {
 	Email    string `json:"email"`
@@ -70,6 +67,7 @@ const password string = "Quantum#123"
 const baseUrl string = "https://api.telegram.org/bot1638003720:AAG1JD9I4XjQYEkYiUTa7An3rOGiVk9sq4M/sendMessage?chat_id=-568647766&text="
 
 func (c *MQTTConnector) Start() {
+
 	time.Sleep(3 * time.Second)
 	fmt.Println("MQTTConnector.start()")
 

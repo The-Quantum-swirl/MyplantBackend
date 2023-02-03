@@ -103,11 +103,12 @@ func HandleRegisterFromNode() {
 }
 
 func main() {
-	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service1"}
-	MqttCon.Start()
 
 	DbCon := &service.DBConnector{DB: nil}
 	DbCon.Start()
+
+	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service1", DBCon: DbCon}
+	MqttCon.Start()
 	Db := DbCon.DB
 	fetchUserByEmail, err := Db.Prepare(`SELECT id, email FROM public.user where email = $1;`)
 	if err != nil {
