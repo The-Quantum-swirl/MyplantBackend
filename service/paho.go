@@ -29,9 +29,8 @@ func processNodeRegistration(msg MQTT.Message) {
 
 	db := DBConnector{DB: nil}
 	db.Start()
-	db.HandleRegisterFromNodeDb(det.Email, det.ClientId)
+	// db.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
-	
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())

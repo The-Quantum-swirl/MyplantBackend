@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MYPLANTBACKEND/model"
 	"MYPLANTBACKEND/service"
 	"database/sql"
 	"fmt"
@@ -37,53 +38,42 @@ type UserRequestBody struct {
 // 	{ID: "2", Item: "Read Book", Completed: true},
 // }
 
-func getTodos(context *gin.Context, DB *sql.DB) {
-	var res user
-	var todos []user
-	rows, err := DB.Query(`SELECT * FROM public.user`)
-	if err != nil {
-		fmt.Println(err)
-		context.IndentedJSON(http.StatusBadGateway, "An error occured")
-	}
+func getTodos(context *gin.Context, dbService *service.DBConnector) {
+	res := dbService.GetAllUser()
+	log.Output(2, res[0].FirstName)
 
-	defer rows.Close()
-	for rows.Next() {
-		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber, &res.DeviceName)
-		fmt.Println(res)
-		todos = append(todos, res)
+	if res == nil {
+		context.IndentedJSON(http.StatusBadGateway, "An error occured in Fetching User")
+	} else {
+		context.IndentedJSON(http.StatusOK, res)
 	}
-	context.IndentedJSON(http.StatusOK, todos)
 }
-func findUserByEmailId(context *gin.Context, stmt *sql.Stmt, email string) {
-	// email := context.Param("email")
-	var res user
-	//one liner//
-	err := stmt.QueryRow(email).Scan(&res.ID, &res.Email)
-	// var todos []user
+func findUserByEmailId(context *gin.Context, dbService *service.DBConnector, email string) {
+	res := dbService.GetUser(&email)
 
-	// rows, err := stmt.Query(email)
-	if err != nil {
-		fmt.Println(err)
+	if res == nil {
 		context.IndentedJSON(http.StatusBadGateway, "An error occured in Finding User : "+email)
 	} else {
 		context.IndentedJSON(http.StatusOK, res)
 	}
 }
-func saveUserFunc(context *gin.Context, Db *sql.DB, stmt *sql.Stmt, dummyUser user) {
-	_, err := stmt.Exec(dummyUser.Email, dummyUser.DeviceId, dummyUser.DeviceType, dummyUser.FirstName, dummyUser.LastName, dummyUser.UpdatedAt, dummyUser.ProfilePhotoUrl, dummyUser.Registered, dummyUser.MobileNumber, dummyUser.DeviceName)
-	if err != nil {
-		fmt.Println(err)
-		context.IndentedJSON(http.StatusBadGateway, "An error occured in saving User")
-	}
-	var id int
-	if err := Db.QueryRow("SELECT public.user.id FROM user WHERE email = $1", dummyUser.Email).Scan(&id); err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Dummy user inserted successfully with id:", id)
 
-	context.IndentedJSON(http.StatusOK, "User Saved Successfully")
-}
+// func saveUserFunc(context *gin.Context, Db *sql.DB, stmt *sql.Stmt, dummyUser *model.User) {
+// 	// dummyUser.GetDeviceId()
+// 	_, err := stmt.Exec(dummyUser.Email, dummyUser.DeviceId, dummyUser.DeviceType, dummyUser.FirstName, dummyUser.LastName, dummyUser.UpdatedAt, dummyUser.ProfilePhotoUrl, dummyUser.Registered, dummyUser.MobileNumber, dummyUser.DeviceName)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return err
+// 	}
+// 	var id int
+// 	if err := Db.QueryRow("SELECT public.user.id FROM user WHERE email = $1", dummyUser.Email).Scan(&id); err != nil {
+// 		fmt.Println(err)
+// 		return err
+// 	}
+// 	fmt.Println("Dummy user inserted successfully with id:", id)
+
+//		return nil
+//	}
 func runQuery(context *gin.Context, Db *sql.DB) {
 	var res user
 
@@ -117,6 +107,7 @@ func main() {
 	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service1", DBCon: DbCon}
 	MqttCon.Start()
 	Db := DbCon.DB
+
 	fetchUserByEmail, err := Db.Prepare(`SELECT id, email FROM public.user where email = $1;`)
 	if err != nil {
 		log.Fatal(err)
@@ -134,7 +125,7 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/todos", func(context *gin.Context) {
-		getTodos(context, DbCon.DB)
+		getTodos(context, DbCon)
 	})
 
 	router.GET("/publishTest", func(context *gin.Context) {
@@ -142,21 +133,22 @@ func main() {
 		MqttCon.Client.Publish("publish-service", 0, false, message)
 	})
 
-	router.POST("/saveUser", func(context *gin.Context) {
-		dummyUser := user{
-			Email:           "john.doe@example.com",
-			DeviceId:        "1234567890",
-			DeviceName:      "Spitzy",
-			DeviceType:      "Android",
-			FirstName:       "John",
-			LastName:        "Doe",
-			UpdatedAt:       time.Now(),
-			ProfilePhotoUrl: "https://example.com/john.doe.jpg",
-			Registered:      true,
-			MobileNumber:    "555-555-5555",
-		}
-		saveUserFunc(context, Db, saveUser, dummyUser)
-	})
+	// router.POST("/saveUser", func(context *gin.Context) {
+
+	// 	dummyUser := &model.user{
+	// 		Email:           "john.doe@example.com",
+	// 		DeviceId:        "1234567890",
+	// 		DeviceName:      "Spitzy",
+	// 		DeviceType:      "Android",
+	// 		FirstName:       "John",
+	// 		LastName:        "Doe",
+	// 		UpdatedAt:       time.Now(),
+	// 		ProfilePhotoUrl: "https://example.com/john.doe.jpg",
+	// 		Registered:      true,
+	// 		MobileNumber:    "555-555-5555",
+	// 	}
+	// 	saveUserFunc(context, Db, saveUser, dummyUser)
+	// })
 
 	router.POST("/saveUserDetails", func(context *gin.Context) {
 		var requestBody UserRequestBody
@@ -164,25 +156,13 @@ func main() {
 			fmt.Println(err)
 		}
 
-		userToBeSaved := user{
-			Email:           requestBody.Email,
-			FirstName:       requestBody.FirstName,
-			LastName:        requestBody.LastName,
-			UpdatedAt:       time.Now(),
-			ProfilePhotoUrl: requestBody.PhotoUrl,
-			Registered:      true,
-		}
+		userToBeSaved := model.NewUser(requestBody.Email)
+		userToBeSaved.SetName(requestBody.FirstName, requestBody.LastName)
+		userToBeSaved.SetProfilePhoto(requestBody.PhotoUrl)
+		userToBeSaved.RegisterIt()
 
-		var res user
-		err := Db.QueryRow(requestBody.Email).Scan(&res.ID, &res.Email)
-		if err != nil {
-			fmt.Println(err)
-		}
-		if res.Email == requestBody.Email {
-			fmt.Print(res)
-			saveUserFunc(context, Db, saveUser, userToBeSaved)
+		if DbCon.SaveNewUser(userToBeSaved) != nil {
 			context.IndentedJSON(http.StatusOK, "Saved")
-
 		} else {
 			context.IndentedJSON(http.StatusAlreadyReported, "User already there")
 		}
@@ -191,8 +171,9 @@ func main() {
 	router.GET("/fetchUser/:email", func(context *gin.Context) {
 		email := context.Param("email")
 		fmt.Println("searching for : " + email)
-		findUserByEmailId(context, fetchUserByEmail, email)
+		findUserByEmailId(context, DbCon, email)
 	})
+
 	router.GET("/query", func(context *gin.Context) {
 		runQuery(context, Db)
 	})
