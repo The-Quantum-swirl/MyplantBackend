@@ -6,9 +6,7 @@ import (
 	"log"
 	"os"
 	"time"
-
 	"MYPLANTBACKEND/model"
-
 	_ "github.com/lib/pq"
 )
 
@@ -42,8 +40,8 @@ func (c *DBConnector) Start() {
 	dbname = os.Getenv("DB_NAME")
 	dbport = os.Getenv("DB_PORT")
 
-	// connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", connectionName, dbport, dbuser, dbpassword, dbname)
-	connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", connectionName, dbport, dbuser, dbpassword, dbname)
+	// connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
 	fmt.Print(connString)
 
 	var err error
@@ -77,29 +75,31 @@ type user struct {
 	DeviceName      string    `json:"deviceName"`
 }
 
-// func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
-// 	fmt.Println("ionside db handle rgister")
-// 	fmt.Printf("Email: %s || Client ID : %s", email, clientId)
-// 	res, err := c.DB.Exec("UPDATE public.user SET device_id = $1 WHERE email = $2", clientId, email)
+func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
+	fmt.Println("ionside db handle rgister")
+	fmt.Printf("Email: %s || Client ID : %s", email, clientId)
+	res, err := c.DB.Exec("UPDATE public.user SET device_id = $1 WHERE email = $2", clientId, email)
 
-// 	if err != nil {
-// 		return fmt.Errorf("error inserting data into the database: %v", err)
-// 	}
-// 	rowsAffected, err := res.RowsAffected()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	fmt.Println("Number of Rows affected are :", rowsAffected)
+	if err != nil {
+		return fmt.Errorf("error inserting data into the database: %v", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	fmt.Println("Number of Rows affected are :", rowsAffected)
 
-// 	if rowsAffected == 0 {
-// 		fmt.Printf("Addign new user as Email not found: %s", email)
-// 		c.SaveNewUser(clientId, email)
-// 		return fmt.Errorf("email not found: %s", email)
-// 	}
+	if rowsAffected == 0 {
+		fmt.Printf("Addign new user as Email not found: %s", email)
+		newUser := model.NewUser(email)
+		newUser.SetDevice(clientId,"Android")
+		c.SaveNewUser(newUser)
+		return fmt.Errorf("email not found: %s", email)
+	}
 
-//		defer c.DB.Close()
-//		return nil
-//	}
+		defer c.DB.Close()
+		return nil
+	}
 
 // fetch user from db
 func (c *DBConnector) GetAllUser() []*model.User {
