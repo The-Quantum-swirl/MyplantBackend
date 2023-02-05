@@ -1,12 +1,13 @@
 package service
 
 import (
+	"MYPLANTBACKEND/model"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"time"
-	"MYPLANTBACKEND/model"
+
 	_ "github.com/lib/pq"
 )
 
@@ -25,14 +26,7 @@ var saveUserStmt *sql.Stmt
 func init() {
 	log.Output(1, "Init main Called ")
 }
-func (c *DBConnector) init() {
-	log.Output(1, "Init called")
-	var err error
-	saveUserStmt, err = c.prepareSaveNewUserStmt()
-	if err != nil {
-		fmt.Println(err)
-	}
-}
+
 func (c *DBConnector) Start() {
 	connectionName = os.Getenv("INSTANCE_CONNECTION_NAME")
 	dbuser = os.Getenv("DB_USER")
@@ -61,45 +55,33 @@ func (c *DBConnector) Start() {
 
 }
 
-type user struct {
-	ID              int       `json:"id"`
-	Email           string    `json:"email"`
-	DeviceId        string    `json:"deviceId"`
-	DeviceType      string    `json:"deviceType"`
-	FirstName       string    `json:"firstName"`
-	LastName        string    `json:"lastName"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-	ProfilePhotoUrl string    `json:"profilePhotoUrl"`
-	Registered      bool      `json:"registered"`
-	MobileNumber    string    `json:"mobileNumber"`
-	DeviceName      string    `json:"deviceName"`
-}
-
 func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
-	fmt.Println("ionside db handle rgister")
+	fmt.Println("----- registering device -----")
 	fmt.Printf("Email: %s || Client ID : %s", email, clientId)
-	res, err := c.DB.Exec("UPDATE public.user SET device_id = $1 WHERE email = $2", clientId, email)
 
+	res, err := c.DB.Exec("UPDATE public.user SET device_id = $1 WHERE email = $2", clientId, email)
 	if err != nil {
 		return fmt.Errorf("error inserting data into the database: %v", err)
 	}
+
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
+
 	fmt.Println("Number of Rows affected are :", rowsAffected)
 
+	// if no rows are affected then add new user
 	if rowsAffected == 0 {
-		fmt.Printf("Addign new user as Email not found: %s", email)
+		fmt.Printf("Adding new user as Email not found: %s", email)
 		newUser := model.NewUser(email)
-		newUser.SetDevice(clientId,"Android")
+		newUser.SetDevice(clientId, "wp")
 		c.SaveNewUser(newUser)
-		return fmt.Errorf("email not found: %s", email)
 	}
 
-		defer c.DB.Close()
-		return nil
-	}
+	defer c.DB.Close()
+	return nil
+}
 
 // fetch user from db
 func (c *DBConnector) GetAllUser() []*model.User {
@@ -110,12 +92,12 @@ func (c *DBConnector) GetAllUser() []*model.User {
 		return nil
 	}
 
-	var res user
+	var res model.User
 	defer rows.Close()
 
 	var UserList []*model.User
 	for rows.Next() {
-		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber, &res.DeviceName)
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
 		// initialize new user
 		newUser := model.NewUser(res.Email)
 		newUser.SetDevice(res.DeviceId, "wp")
@@ -137,10 +119,10 @@ func (c *DBConnector) GetUser(email *string) *model.User {
 		return nil
 	}
 
-	var res user
+	var res model.User
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber, &res.DeviceName)
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
 		// initialize new user
 		newUser := model.NewUser(res.Email)
 		newUser.SetDevice(res.DeviceId, "wp")
@@ -166,15 +148,4 @@ func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
 	}
 	log.Output(1, "User Added Sucessfully")
 	return u
-}
-
-func (c *DBConnector) prepareSaveNewUserStmt() (*sql.Stmt, error) {
-	saveUser, err := c.DB.Prepare(`INSERT INTO public.user (email, device_id, device_type, first_name, last_name, updated_at, profile_photo_url, registered, mobile_number,device_name)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    RETURNING id`)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
-	return saveUser, nil
 }
