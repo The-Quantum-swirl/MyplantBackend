@@ -11,6 +11,7 @@ import (
 )
 
 var knt int
+var DbMG *DBConnector
 var handleMQTTMessage MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("MSG: %s\n", msg.Payload())
 	fmt.Printf("this is result msg #%d!", knt)
@@ -26,10 +27,7 @@ func processNodeRegistration(msg MQTT.Message) {
 		fmt.Println("Error unmarshaling JSON:", err)
 		return
 	}
-
-	db := DBConnector{DB: nil}
-	db.Start()
-	// db.HandleRegisterFromNodeDb(det.Email, det.ClientId)
+	DbMG.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
@@ -92,7 +90,7 @@ func (c *MQTTConnector) Start() {
 	} else {
 		fmt.Printf("Connected to server\n")
 	}
-
+	DbMG = c.DBCon
 	// start the connection routine
 	fmt.Printf("MQTTConnector.start() Will connect to the broker %v\n", broker)
 }
