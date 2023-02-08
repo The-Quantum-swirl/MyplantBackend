@@ -57,6 +57,9 @@ func findUserByEmailId(context *gin.Context, dbService *service.DBConnector, ema
 }
 
 func main() {
+
+	// gin.SetMode(gin.ReleaseMode)
+
 	// setting db connection
 	DbCon := &service.DBConnector{DB: nil}
 	DbCon.Start()
