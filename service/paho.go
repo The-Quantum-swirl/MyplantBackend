@@ -32,7 +32,7 @@ func processNodeRegistration(msg MQTT.Message) {
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
-	if strings.Compare("register-service1", msg.Topic()) == 0 {
+	if strings.Compare("register-service", msg.Topic()) == 0 {
 		fmt.Println("saving Device Id to DB")
 		processNodeRegistration(msg)
 	}
