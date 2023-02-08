@@ -1,0 +1,34 @@
+$env:INSTANCE_CONNECTION_NAME="localhost"
+$env:DB_USER="postgres"
+$env:DB_PASS="postgres"
+$env:DB_NAME="postgres"
+$env:DB_PORT="5432"
+
+
+$env:INSTANCE_CONNECTION_NAME="satao.db.elephantsql.com"
+$env:DB_USER="uieuswin"
+$env:DB_PASS="nErGkASv-FgSH4h6CGXzEyL0OV2pcygP"
+$env:DB_NAME="uieuswin"
+$env:DB_PORT="5432"
+
+$env:GIN_MODE="release"
+
+// windows
+set INSTANCE_CONNECTION_NAME="localhost"
+set DB_USER="postgres"
+set DB_PASS="postgres"
+set DB_NAME="postgres"
+set DB_PORT="5432"
+
+CREATE TABLE "users" (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    device_id VARCHAR(255) NOT NULL,
+    device_type VARCHAR(255) NOT NULL,
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    profile_photo_url VARCHAR(255),
+    registered BOOLEAN NOT NULL DEFAULT false,
+    mobile_number VARCHAR(255) NOT NULL
+);

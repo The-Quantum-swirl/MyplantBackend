@@ -1,59 +1,94 @@
 package main
 
 import (
+	"MYPLANTBACKEND/model"
 	"MYPLANTBACKEND/service"
-	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-type user struct {
-	Email           string `json:"email"`
-	DeviceId        string `json:"deviceId"`
-	DeviceType      string `json:"deviceType"`
-	FirstName       string `json:"firstName"`
-	LastName        string `json:"lastName"`
-	UpdatedAt       string `json:"updatedAt"`
-	ProfilePhotoUrl string `json:"profilePhotoUrl"`
-	Registered      bool   `json:"registered"`
-	MobileNumber    string `json:"mobileNumber"`
+type UserRequestBody struct {
+	Email     string
+	PhotoUrl  string
+	FirstName string
+	LastName  string
 }
 
-// var todos = []todo{
-// 	{ID: "1", Item: "Clean Room", Completed: false},
-// 	{ID: "2", Item: "Read Book", Completed: true},
-// }
+func getTodos(context *gin.Context, dbService *service.DBConnector) {
+	res := dbService.GetAllUser()
+	log.Output(2, "get all user call executed")
 
-func getTodos(context *gin.Context, DB *sql.DB) {
-	var res user
-	var todos []user
-	rows, err := DB.Query("SELECT * FROM public.user")
-	if err != nil {
+	if res == nil {
+		context.IndentedJSON(http.StatusBadGateway, "An error occured in Fetching User")
+	} else {
+		context.IndentedJSON(http.StatusOK, res)
+	}
+}
+
+func saveUserDetails(context *gin.Context, dbService *service.DBConnector) {
+	var requestBody UserRequestBody
+	if err := context.BindJSON(&requestBody); err != nil {
 		fmt.Println(err)
-		context.IndentedJSON(http.StatusBadGateway, "An error occured")
 	}
 
-	defer rows.Close()
-	for rows.Next() {
-		rows.Scan(&res)
-		todos = append(todos, res)
+	userToBeSaved := model.NewUser(requestBody.Email)
+	userToBeSaved.SetName(requestBody.FirstName, requestBody.LastName)
+	userToBeSaved.SetProfilePhoto(requestBody.PhotoUrl)
+	userToBeSaved.RegisterIt()
+
+	if dbService.SaveNewUser(userToBeSaved) != nil {
+		context.IndentedJSON(http.StatusOK, "Saved")
+	} else {
+		context.IndentedJSON(http.StatusAlreadyReported, "User already there")
 	}
-	context.IndentedJSON(http.StatusOK, todos)
+}
+
+func findUserByEmailId(context *gin.Context, dbService *service.DBConnector, email string) {
+	res := dbService.GetUser(&email)
+
+	if res == nil {
+		context.IndentedJSON(http.StatusBadGateway, "An error occured in Finding User : "+email)
+	} else {
+		context.IndentedJSON(http.StatusOK, res)
+	}
 }
 
 func main() {
 
-	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service"}
-	MqttCon.Start()
+	// gin.SetMode(gin.ReleaseMode)
 
+	// setting db connection
 	DbCon := &service.DBConnector{DB: nil}
 	DbCon.Start()
 
+	// setting mqtt connection
+	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service", DBCon: DbCon}
+	MqttCon.Start()
+
+	// setting router
 	router := gin.Default()
+
+	//paths
 	router.GET("/todos", func(context *gin.Context) {
-		getTodos(context, DbCon.DB)
+		getTodos(context, DbCon)
 	})
-	router.Run("localhost:8080")
+
+	router.GET("/publishTest", func(context *gin.Context) {
+		message := "Hello, World!"
+		MqttCon.Client.Publish("publish-service", 0, false, message)
+	})
+
+	router.GET("/fetchUser/:email", func(context *gin.Context) {
+		email := context.Param("email")
+		findUserByEmailId(context, DbCon, email)
+	})
+
+	router.POST("/saveUserDetails", func(context *gin.Context) {
+		saveUserDetails(context, DbCon)
+	})
+
+	router.Run(":8080")
 }

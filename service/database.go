@@ -1,15 +1,17 @@
 package service
 
 import (
+	"MYPLANTBACKEND/model"
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
 
 type DBConnector struct {
-	// db gorm.DB
 	DB *sql.DB
 }
 
@@ -19,72 +21,130 @@ var dbpassword string
 var dbname string
 var dbport string
 
+var saveUserStmt *sql.Stmt
+
+func init() {
+	log.Output(1, "Init main Called ")
+}
+
 func (c *DBConnector) Start() {
 	connectionName = os.Getenv("INSTANCE_CONNECTION_NAME")
 	dbuser = os.Getenv("DB_USER")
 	dbpassword = os.Getenv("DB_PASS")
 	dbname = os.Getenv("DB_NAME")
 	dbport = os.Getenv("DB_PORT")
-
-	// connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", connectionName, dbport, dbuser, dbpassword, dbname)
-	connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
+	// sslmode=disable
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", connectionName, dbport, dbuser, dbpassword, dbname)
+	// connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
 	fmt.Print(connString)
-
 	var err error
 
 	c.DB, err = sql.Open("postgres", connString)
+	if err != nil {
+		fmt.Errorf("error initializing the database: %v", err)
+	}
 
-	// c.db, err = gorm.Open(postgres.New(postgres.Config{
-	// 	DriverName: "cloudsqlpostgres",
-	// 	DSN:        connString,
-	// }))
-
-	// Connect to the Postgres database on Google Cloud SQL
-
+	err = c.DB.Ping()
+	if err != nil {
+		fmt.Errorf("error connecting to the database: %v", err)
+	}
 	if err != nil {
 		fmt.Println(err)
 	}
 
 }
 
-type User struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
+func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
+	fmt.Println("----- registering device -----")
+	fmt.Printf("Email: %s || Client ID : %s", email, clientId)
+
+	res, err := c.DB.Exec("UPDATE users SET device_id = $1 WHERE email = $2", clientId, email)
+	if err != nil {
+		return fmt.Errorf("error inserting data into the database: %v", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Number of Rows affected are :", rowsAffected)
+
+	// if no rows are affected then add new user
+	if rowsAffected == 0 {
+		fmt.Printf("Adding new user as Email not found: %s", email)
+		newUser := model.NewUser(email)
+		newUser.SetDevice(clientId, "wp")
+		c.SaveNewUser(newUser)
+	}
+
+	defer c.DB.Close()
+	return nil
 }
 
-// func (c *DBConnector) GetUser() {
-// 	var users []User
-// 	db.Find(&users)
+// fetch user from db
+func (c *DBConnector) GetAllUser() []*model.User {
+	query := `SELECT * FROM users`
+	rows, err := c.DB.Query(query)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
 
-// 	return users
-// 	// c.JSON(http.StatusOK, gin.H{"data": users})
-// }
+	var res model.User
+	defer rows.Close()
 
-// func main() {
+	var UserList []*model.User
+	for rows.Next() {
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
+		// initialize new user
+		newUser := model.NewUser(res.Email)
+		newUser.SetDevice(res.DeviceId, "wp")
+		newUser.SetMobileNumber(res.MobileNumber)
+		newUser.SetName(res.FirstName, res.LastName)
+		newUser.SetProfilePhoto(res.ProfilePhotoUrl)
+		// return the first user found
+		UserList = append(UserList, newUser)
+	}
+	return UserList
+}
 
-// 	// Use Gin to handle HTTP requests
-// 	r := gin.Default()
-// 	r.GET("/data", func(cgin.Context) {
-// 		var users []User
-// 		db.Find(&users)
-// 		c.JSON(http.StatusOK, gin.H{"data": users})
-// 	})
+// fetch user from db
+func (c *DBConnector) GetUser(email *string) *model.User {
+	query := `SELECT * FROM users WHERE email = $1`
+	rows, err := c.DB.Query(query, email)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
 
-// 	r.GET("/", func(c gin.Context) {
-// 		c.JSON(http.StatusOK, gin.H{
-// 			"message": "Hello, World!",
-// 		})
-// 	})
+	var res model.User
+	defer rows.Close()
+	for rows.Next() {
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
+		// initialize new user
+		newUser := model.NewUser(res.Email)
+		newUser.SetDevice(res.DeviceId, "wp")
+		newUser.SetMobileNumber(res.MobileNumber)
+		newUser.SetName(res.FirstName, res.LastName)
+		newUser.SetProfilePhoto(res.ProfilePhotoUrl)
+		// return the first user found
+		return newUser
+	}
+	log.Output(1, "user not found")
+	return nil
+}
 
-// 	r.POST("/saveUser", func(cgin.Context) {
-// 		us := User{ID: 1, Username: "mukh"}
-// 		log(us.ID)
-// 		logs(us.Username)
-// 		if !db.Migrator().HasTable("users") {
-// 			db.Migrator().CreateTable(&User{})
-// 		}
-// 		res := db.Create(&us)
-// 		logs(res.Error.Error())
-// 	})
-// 	r.Run(":8080")
-// }
+// save user in db
+func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
+	query := `INSERT INTO users (email, device_id, device_type, first_name, last_name, updated_at, profile_photo_url, registered, mobile_number)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id`
+	_, err := c.DB.Exec(query, (*u).GetEmail(), (*u).GetDeviceId(), (*u).GetDeviceId(), (*u).GetFirstName(), (*u).GetLastName(), time.Now(), (*u).GetProfilePhoto(), (*u).IsRegistered(), (*u).GetMobileNumber())
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	log.Output(1, "User Added Sucessfully")
+	return u
+}

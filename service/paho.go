@@ -1,21 +1,41 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
 var knt int
-
-var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
+var DbMG *DBConnector
+var handleMQTTMessage MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("MSG: %s\n", msg.Payload())
 	fmt.Printf("this is result msg #%d!", knt)
+	message := fmt.Sprintf("Message: %s", msg.Payload())
+	httpReq(message)
 	knt++
+}
+
+func processNodeRegistration(msg MQTT.Message) {
+	var det Detail
+	err := json.Unmarshal([]byte(msg.Payload()), &det)
+	if err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+		return
+	}
+	DbMG.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
+	if strings.Compare("register-service", msg.Topic()) == 0 {
+		fmt.Println("saving Device Id to DB")
+		processNodeRegistration(msg)
+	}
 }
 
 var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
@@ -23,34 +43,43 @@ var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
 }
 
 var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err error) {
-	fmt.Printf("Connect lost: %v", err)
+	fmt.Println("Connect lost: ", err)
+	client.Connect()
 }
 
 type MQTTConnector struct {
 	Client MQTT.Client
 	SubCh  string
+	DBCon  *DBConnector
+}
+type Detail struct {
+	Email    string `json:"email"`
+	ClientId string `json:"clientId"`
 }
 
-const broker string = "tls://cf4585ba36124b2cbc748a34dce5431d.s1.eu.hivemq.cloud"
+const broker string = "tls://fc61e06e9fda466eb883fa570fe337d4.s1.eu.hivemq.cloud"
 const port int = 8883
-const username string = "hivemq.webclient.1668925004357"
-const password string = "0A:1yRZa2V?xu&7JlKv*"
+const username string = "QuantumWaterBot"
+const password string = "Quantum#123"
+const baseUrl string = "https://api.telegram.org/bot1638003720:AAG1JD9I4XjQYEkYiUTa7An3rOGiVk9sq4M/sendMessage?chat_id=-568647766&text="
 
 func (c *MQTTConnector) Start() {
+
+	time.Sleep(3 * time.Second)
 	fmt.Println("MQTTConnector.start()")
 
 	knt = 0
 	// configure the mqtt client
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("%s:%d", broker, port))
-	opts.SetClientID("backend")
+	opts.SetClientID("backend1")
 	opts.SetUsername(username)
 	opts.SetPassword(password)
 	opts.SetDefaultPublishHandler(messagePubHandler)
 	opts.OnConnectionLost = connectLostHandler
 	opts.OnConnect = func(cl MQTT.Client) {
 		// on connect will subscribe to default topic
-		if token := cl.Subscribe(c.SubCh, 0, f); token.Wait() && token.Error() != nil {
+		if token := cl.Subscribe(c.SubCh, 0, messagePubHandler); token.Wait() && token.Error() != nil {
 			panic(token.Error())
 		}
 	}
@@ -61,7 +90,17 @@ func (c *MQTTConnector) Start() {
 	} else {
 		fmt.Printf("Connected to server\n")
 	}
-
+	DbMG = c.DBCon
 	// start the connection routine
 	fmt.Printf("MQTTConnector.start() Will connect to the broker %v\n", broker)
+}
+func httpReq(message string) {
+	url1 := fmt.Sprintf(baseUrl + message)
+	req, _ := http.NewRequest("GET", url1, nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer resp.Body.Close()
 }
