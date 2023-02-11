@@ -3,7 +3,9 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,8 +15,8 @@ import (
 var knt int
 var DbMG *DBConnector
 var handleMQTTMessage MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("MSG: %s\n", msg.Payload())
-	fmt.Printf("this is result msg #%d!", knt)
+	log.Output(1, "MSG: "+string(msg.Payload()))
+	log.Println("this is result msg" + strconv.Itoa(knt))
 	message := fmt.Sprintf("Message: %s", msg.Payload())
 	httpReq(message)
 	knt++
@@ -24,26 +26,26 @@ func processNodeRegistration(msg MQTT.Message) {
 	var det Detail
 	err := json.Unmarshal([]byte(msg.Payload()), &det)
 	if err != nil {
-		fmt.Println("Error unmarshaling JSON:", err)
+		log.Println("Error unmarshaling JSON:", err)
 		return
 	}
 	DbMG.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
+	log.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
 	if strings.Compare("register-service", msg.Topic()) == 0 {
-		fmt.Println("saving Device Id to DB")
+		log.Println("saving Device Id to DB")
 		processNodeRegistration(msg)
 	}
 }
 
 var connectHandler MQTT.OnConnectHandler = func(client MQTT.Client) {
-	fmt.Println("Connected")
+	log.Println("Connected")
 }
 
 var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err error) {
-	fmt.Println("Connect lost: ", err)
+	log.Println("Connect lost: ", err)
 	client.Connect()
 }
 
@@ -66,7 +68,7 @@ const baseUrl string = "https://api.telegram.org/bot1638003720:AAG1JD9I4XjQYEkYi
 func (c *MQTTConnector) Start() {
 
 	time.Sleep(3 * time.Second)
-	fmt.Println("MQTTConnector.start()")
+	log.Println("---------- MQTT started ----------")
 
 	knt = 0
 	// configure the mqtt client
@@ -88,18 +90,18 @@ func (c *MQTTConnector) Start() {
 	if token := c.Client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	} else {
-		fmt.Printf("Connected to server\n")
+		log.Printf("Connected to server\n")
 	}
 	DbMG = c.DBCon
 	// start the connection routine
-	fmt.Printf("MQTTConnector.start() Will connect to the broker %v\n", broker)
+	log.Printf("MQTTConnector.start() Will connect to the broker %v\n", broker)
 }
 func httpReq(message string) {
 	url1 := fmt.Sprintf(baseUrl + message)
 	req, _ := http.NewRequest("GET", url1, nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	defer resp.Body.Close()

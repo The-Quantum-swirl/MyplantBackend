@@ -24,7 +24,7 @@ var dbport string
 var saveUserStmt *sql.Stmt
 
 func init() {
-	log.Output(1, "Init main Called ")
+	log.Output(2, "Init main Called ")
 }
 
 func (c *DBConnector) Start() {
@@ -36,27 +36,27 @@ func (c *DBConnector) Start() {
 	// sslmode=disable
 	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", connectionName, dbport, dbuser, dbpassword, dbname)
 	// connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
-	fmt.Print(connString)
+	log.Print(connString)
 	var err error
 
 	c.DB, err = sql.Open("postgres", connString)
 	if err != nil {
-		fmt.Errorf("error initializing the database: %v", err)
+		log.Fatal("error initializing the database: " + err.Error())
 	}
 
 	err = c.DB.Ping()
 	if err != nil {
-		fmt.Errorf("error connecting to the database: %v", err)
+		log.Fatal("error connecting to the database: " + err.Error())
 	}
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 }
 
 func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
-	fmt.Println("----- registering device -----")
-	fmt.Printf("Email: %s || Client ID : %s", email, clientId)
+	log.Println("----- registering device -----")
+	log.Printf("Email: %s || Client ID : %s", email, clientId)
 
 	res, err := c.DB.Exec("UPDATE users SET device_id = $1 WHERE email = $2", clientId, email)
 	if err != nil {
@@ -68,11 +68,11 @@ func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
 		return err
 	}
 
-	fmt.Println("Number of Rows affected are :", rowsAffected)
+	log.Println("Number of Rows affected are :", rowsAffected)
 
 	// if no rows are affected then add new user
 	if rowsAffected == 0 {
-		fmt.Printf("Adding new user as Email not found: %s", email)
+		log.Printf("Adding new user as Email not found: %s", email)
 		newUser := model.NewUser(email)
 		newUser.SetDevice(clientId, "wp")
 		c.SaveNewUser(newUser)
@@ -87,7 +87,7 @@ func (c *DBConnector) GetAllUser() []*model.User {
 	query := `SELECT * FROM users`
 	rows, err := c.DB.Query(query)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return nil
 	}
 
@@ -114,7 +114,7 @@ func (c *DBConnector) GetUser(email *string) *model.User {
 	query := `SELECT * FROM users WHERE email = $1`
 	rows, err := c.DB.Query(query, email)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return nil
 	}
 
@@ -142,7 +142,7 @@ func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
     RETURNING id`
 	_, err := c.DB.Exec(query, (*u).GetEmail(), (*u).GetDeviceId(), (*u).GetDeviceId(), (*u).GetFirstName(), (*u).GetLastName(), time.Now(), (*u).GetProfilePhoto(), (*u).IsRegistered(), (*u).GetMobileNumber())
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return nil
 	}
 	log.Output(1, "User Added Sucessfully")
