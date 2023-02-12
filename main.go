@@ -78,6 +78,7 @@ func main() {
 	router.GET("/publishTest", func(context *gin.Context) {
 		message := "Hello, World!"
 		MqttCon.Client.Publish("publish-service", 0, false, message)
+		context.IndentedJSON(http.StatusOK, "published")
 	})
 
 	router.GET("/fetchUser/:email", func(context *gin.Context) {

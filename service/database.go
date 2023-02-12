@@ -51,7 +51,14 @@ func (c *DBConnector) Start() {
 	if err != nil {
 		log.Println(err)
 	}
+	// max timeout for db connection
+	c.DB.SetConnMaxLifetime(1800 * time.Second)
 
+	// Set maximum number of connections in idle connection pool.
+	c.DB.SetMaxIdleConns(5)
+
+	// Set maximum number of open connections to the database.
+	c.DB.SetMaxOpenConns(7)
 }
 
 func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
