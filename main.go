@@ -3,7 +3,6 @@ package main
 import (
 	"MYPLANTBACKEND/model"
 	"MYPLANTBACKEND/service"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -31,7 +30,7 @@ func getTodos(context *gin.Context, dbService *service.DBConnector) {
 func saveUserDetails(context *gin.Context, dbService *service.DBConnector) {
 	var requestBody UserRequestBody
 	if err := context.BindJSON(&requestBody); err != nil {
-		fmt.Println(err)
+		log.Output(1, err.Error())
 	}
 
 	userToBeSaved := model.NewUser(requestBody.Email)
@@ -79,6 +78,7 @@ func main() {
 	router.GET("/publishTest", func(context *gin.Context) {
 		message := "Hello, World!"
 		MqttCon.Client.Publish("publish-service", 0, false, message)
+		context.IndentedJSON(http.StatusOK, "published")
 	})
 
 	router.GET("/fetchUser/:email", func(context *gin.Context) {

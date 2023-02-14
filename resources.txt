@@ -13,6 +13,14 @@ $env:DB_PORT="5432"
 
 $env:GIN_MODE="release"
 
+export INSTANCE_CONNECTION_NAME="satao.db.elephantsql.com"
+export DB_USER="uieuswin"
+export DB_PASS="nErGkASv-FgSH4h6CGXzEyL0OV2pcygP"
+export DB_NAME="uieuswin"
+export DB_PORT="5432"
+
+export GIN_MODE="release"
+
 // windows
 set INSTANCE_CONNECTION_NAME="localhost"
 set DB_USER="postgres"
