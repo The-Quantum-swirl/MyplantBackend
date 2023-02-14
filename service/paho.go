@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -65,16 +66,19 @@ const username string = "QuantumWaterBot"
 const password string = "Quantum#123"
 const baseUrl string = "https://api.telegram.org/bot1638003720:AAG1JD9I4XjQYEkYiUTa7An3rOGiVk9sq4M/sendMessage?chat_id=-568647766&text="
 
+var connection string = "backend1"
+
 func (c *MQTTConnector) Start() {
 
 	time.Sleep(3 * time.Second)
 	log.Println("---------- MQTT started ----------")
+	connectionId := os.Getenv("DB_ID")
 
 	knt = 0
 	// configure the mqtt client
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("%s:%d", broker, port))
-	opts.SetClientID("backend1")
+	opts.SetClientID(connectionId)
 	opts.SetUsername(username)
 	opts.SetPassword(password)
 	opts.SetDefaultPublishHandler(messagePubHandler)
