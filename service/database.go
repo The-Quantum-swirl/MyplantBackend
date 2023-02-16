@@ -150,7 +150,14 @@ func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
 	_, err := c.DB.Exec(query, (*u).GetEmail(), (*u).GetDeviceId(), (*u).GetDeviceId(), (*u).GetFirstName(), (*u).GetLastName(), time.Now(), (*u).GetProfilePhoto(), (*u).IsRegistered(), (*u).GetMobileNumber())
 	if err != nil {
 		log.Println(err)
-		return nil
+
+		query := `UPDATE users SET email = $1 first_name = $2 last_name = $3 profile_photo_url = $4 updated_at = $5 registered = $6`
+		_, err := c.DB.Exec(query, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), (*u).GetProfilePhoto(), time.Now(), true)
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+		return u
 	}
 	log.Output(1, "User Added Sucessfully")
 	return u
