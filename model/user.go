@@ -118,3 +118,7 @@ func (u *User) SetMobileNumber(no string) {
 func (u *User) GetMobileNumber() string {
 	return u.MobileNumber
 }
+
+func (u *User) SetUpdatedAt(uat time.Time) {
+	u.UpdatedAt = uat
+}

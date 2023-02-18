@@ -94,7 +94,7 @@ func (c *MQTTConnector) Start() {
 	}
 	DbMG = c.DBCon
 	// start the connection routine
-	log.Printf("MQTTConnector.start() Will connect to the broker %v\n", broker)
+	log.Printf("MQTT Will connect to the broker %v\n", broker)
 }
 func httpReq(message string) {
 	url1 := fmt.Sprintf(baseUrl + message)

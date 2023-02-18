@@ -82,7 +82,8 @@ func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
 		log.Printf("Adding new user as Email not found: %s", email)
 		newUser := model.NewUser(email)
 		newUser.SetDevice(clientId, "wp")
-		c.SaveNewUser(newUser)
+		newUser.RegisterIt()
+		c.RegisterNewUser(newUser)
 	}
 
 	defer c.DB.Close()
@@ -106,10 +107,12 @@ func (c *DBConnector) GetAllUser() []*model.User {
 		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
 		// initialize new user
 		newUser := model.NewUser(res.Email)
-		newUser.SetDevice(res.DeviceId, "wp")
+		newUser.SetId(res.ID)
+		newUser.SetDevice(res.DeviceId, res.DeviceType)
 		newUser.SetMobileNumber(res.MobileNumber)
 		newUser.SetName(res.FirstName, res.LastName)
 		newUser.SetProfilePhoto(res.ProfilePhotoUrl)
+		newUser.SetUpdatedAt(res.UpdatedAt)
 		// return the first user found
 		UserList = append(UserList, newUser)
 	}
@@ -131,10 +134,40 @@ func (c *DBConnector) GetUser(email *string) *model.User {
 		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
 		// initialize new user
 		newUser := model.NewUser(res.Email)
-		newUser.SetDevice(res.DeviceId, "wp")
+		newUser.SetId(res.ID)
+		newUser.SetDevice(res.DeviceId, res.DeviceType)
 		newUser.SetMobileNumber(res.MobileNumber)
 		newUser.SetName(res.FirstName, res.LastName)
 		newUser.SetProfilePhoto(res.ProfilePhotoUrl)
+		newUser.SetUpdatedAt(res.UpdatedAt)
+		// return the first user found
+		return newUser
+	}
+	log.Output(1, "user not found")
+	return nil
+}
+
+// fetch user from db
+func (c *DBConnector) GetUserByID(ID *string) *model.User {
+	query := `SELECT * FROM users WHERE id = $1`
+	rows, err := c.DB.Query(query, ID)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	var res model.User
+	defer rows.Close()
+	for rows.Next() {
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
+		// initialize new user
+		newUser := model.NewUser(res.Email)
+		newUser.SetId(res.ID)
+		newUser.SetDevice(res.DeviceId, res.DeviceType)
+		newUser.SetMobileNumber(res.MobileNumber)
+		newUser.SetName(res.FirstName, res.LastName)
+		newUser.SetProfilePhoto(res.ProfilePhotoUrl)
+		newUser.SetUpdatedAt(res.UpdatedAt)
 		// return the first user found
 		return newUser
 	}
@@ -144,21 +177,65 @@ func (c *DBConnector) GetUser(email *string) *model.User {
 
 // save user in db
 func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
-	query := `INSERT INTO users (email, device_id, device_type, first_name, last_name, updated_at, profile_photo_url, registered, mobile_number)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id`
-	_, err := c.DB.Exec(query, (*u).GetEmail(), (*u).GetDeviceId(), (*u).GetDeviceId(), (*u).GetFirstName(), (*u).GetLastName(), time.Now(), (*u).GetProfilePhoto(), (*u).IsRegistered(), (*u).GetMobileNumber())
+	UpdateUserQuery := `UPDATE users 
+	first_name = $2 last_name = $3 updated_at = $4 profile_photo_url = $5
+	WHERE email = $1`
+	res, err := c.DB.Exec(UpdateUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), time.Now().Format(time.RFC3339), (*u).GetProfilePhoto())
 	if err != nil {
 		log.Println(err)
+		return nil
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		panic(err)
+	}
 
-		query := `UPDATE users SET email = $1 first_name = $2 last_name = $3 profile_photo_url = $4 updated_at = $5 registered = $6`
-		_, err := c.DB.Exec(query, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), (*u).GetProfilePhoto(), time.Now(), true)
+	// unable to update so inserting new record
+	if count == 0 {
+		log.Output(1, "Adding New User")
+		InsertUserQuery := `INSERT INTO users (email, first_name, last_name, updated_at, profile_photo_url)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id`
+		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), time.Now().Format(time.RFC3339), (*u).GetProfilePhoto())
 		if err != nil {
 			log.Println(err)
 			return nil
 		}
-		return u
+	} else {
+		// able to update user
+		log.Output(1, "User Updated Sucessfully")
 	}
-	log.Output(1, "User Added Sucessfully")
+	return u
+}
+
+func (c *DBConnector) RegisterNewUser(u *model.User) *model.User {
+	UpdateUserQuery := `UPDATE users 
+	updated_at = $2 registered = $3 device_id = $4 device_type = $5
+	WHERE email = $1`
+	res, err := c.DB.Exec(UpdateUserQuery, (*u).GetEmail(), time.Now().Format(time.RFC3339), (*u).Registered, (*u).GetDeviceId(), (*u).GetDeviceType())
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		panic(err)
+	}
+
+	// unable to update so inserting new record
+	if count == 0 {
+		log.Output(1, "Adding New User")
+		InsertUserQuery := `INSERT INTO users (email, updated_at, registered, device_id, device_type)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id`
+		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), time.Now().Format(time.RFC3339), (*u).Registered, (*u).GetDeviceId(), (*u).GetDeviceType())
+		if err != nil {
+			log.Println(err)
+			return nil
+		}
+	} else {
+		// able to update user
+		log.Output(1, "User Updated Sucessfully")
+	}
 	return u
 }
