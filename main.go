@@ -21,7 +21,7 @@ func getTodos(context *gin.Context, dbService *service.DBConnector) {
 	log.Output(2, "get all user call executed")
 
 	if res == nil {
-		context.IndentedJSON(http.StatusBadGateway, "An error occured in Fetching User")
+		context.IndentedJSON(http.StatusBadGateway, "Unable to fetch Users")
 	} else {
 		context.IndentedJSON(http.StatusOK, res)
 	}
@@ -41,7 +41,7 @@ func saveUserDetails(context *gin.Context, dbService *service.DBConnector) {
 	if dbService.SaveNewUser(userToBeSaved) != nil {
 		context.IndentedJSON(http.StatusOK, "Saved")
 	} else {
-		context.IndentedJSON(http.StatusAlreadyReported, "User already there")
+		context.IndentedJSON(http.StatusInternalServerError, "Unable to update")
 	}
 }
 
@@ -50,6 +50,16 @@ func findUserByEmailId(context *gin.Context, dbService *service.DBConnector, ema
 
 	if res == nil {
 		context.IndentedJSON(http.StatusBadGateway, "An error occured in Finding User : "+email)
+	} else {
+		context.IndentedJSON(http.StatusOK, res)
+	}
+}
+
+func findUserById(context *gin.Context, dbService *service.DBConnector, ID string) {
+	res := dbService.GetUserByID(&ID)
+
+	if res == nil {
+		context.IndentedJSON(http.StatusBadGateway, "An error occured in Finding User for ID : "+ID)
 	} else {
 		context.IndentedJSON(http.StatusOK, res)
 	}
@@ -84,6 +94,11 @@ func main() {
 	router.GET("/fetchUser/:email", func(context *gin.Context) {
 		email := context.Param("email")
 		findUserByEmailId(context, DbCon, email)
+	})
+
+	router.GET("/getUserById/:id", func(context *gin.Context) {
+		ID := context.Param("id")
+		findUserById(context, DbCon, ID)
 	})
 
 	router.POST("/saveUserDetails", func(context *gin.Context) {
