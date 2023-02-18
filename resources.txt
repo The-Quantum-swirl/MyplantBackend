@@ -10,6 +10,7 @@ $env:DB_USER="uieuswin"
 $env:DB_PASS="nErGkASv-FgSH4h6CGXzEyL0OV2pcygP"
 $env:DB_NAME="uieuswin"
 $env:DB_PORT="5432"
+$env:DB_ID="local-run"
 
 $env:GIN_MODE="release"
 
@@ -28,15 +29,17 @@ set DB_PASS="postgres"
 set DB_NAME="postgres"
 set DB_PORT="5432"
 
-CREATE TABLE "users" (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    device_id VARCHAR(255) NOT NULL,
-    device_type VARCHAR(255) NOT NULL,
-    first_name VARCHAR(255) NOT NULL,
-    last_name VARCHAR(255) NOT NULL,
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    profile_photo_url VARCHAR(255),
-    registered BOOLEAN NOT NULL DEFAULT false,
-    mobile_number VARCHAR(255) NOT NULL
-);
+CREATE TABLE IF NOT EXISTS public.users
+(
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    email character varying(255)  NOT NULL,
+    device_id character varying(255) ,
+    device_type character varying(255) ,
+    first_name character varying(255)  NOT NULL,
+    last_name character varying(255)  NOT NULL,
+    updated_at timestamp  NOT NULL Default NOW(),
+    profile_photo_url character varying(255)  NOT NULL,
+    registered boolean,
+    mobile_number character varying(255) ,
+    CONSTRAINT "Users_pkey" PRIMARY KEY (id)
+)

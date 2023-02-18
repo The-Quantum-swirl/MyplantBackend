@@ -37,7 +37,7 @@ func saveUserDetails(context *gin.Context, dbService *service.DBConnector) {
 	userToBeSaved.SetName(requestBody.FirstName, requestBody.LastName)
 	userToBeSaved.SetProfilePhoto(requestBody.PhotoUrl)
 	userToBeSaved.RegisterIt()
-
+	userToBeSaved.SetDevice("default","default")
 	if dbService.SaveNewUser(userToBeSaved) != nil {
 		context.IndentedJSON(http.StatusOK, "Saved")
 	} else {

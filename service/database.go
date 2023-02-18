@@ -35,7 +35,7 @@ func (c *DBConnector) Start() {
 	dbport = os.Getenv("DB_PORT")
 	// sslmode=disable
 	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", connectionName, dbport, dbuser, dbpassword, dbname)
-	// connString := "postgresql://postgres:quicuxeo@localhost/core-service?sslmode=disable"
+	// connString := "postgresql://postgres:postgres@localhost/postgres?sslmode=disable"
 	log.Print(connString)
 	var err error
 
@@ -112,6 +112,7 @@ func (c *DBConnector) GetAllUser() []*model.User {
 		newUser.SetMobileNumber(res.MobileNumber)
 		newUser.SetName(res.FirstName, res.LastName)
 		newUser.SetProfilePhoto(res.ProfilePhotoUrl)
+		log.Println(res.UpdatedAt.GoString())
 		newUser.SetUpdatedAt(res.UpdatedAt)
 		// return the first user found
 		UserList = append(UserList, newUser)
@@ -177,26 +178,28 @@ func (c *DBConnector) GetUserByID(ID *string) *model.User {
 
 // save user in db
 func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
-	UpdateUserQuery := `UPDATE users 
-	first_name = $2 last_name = $3 updated_at = $4 profile_photo_url = $5
+	UpdateUserQuery := `UPDATE users SET
+	first_name = $2, last_name = $3, updated_at = $4, profile_photo_url = $5,device_id=$6,device_type=$7
 	WHERE email = $1`
-	res, err := c.DB.Exec(UpdateUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), time.Now().Format(time.RFC3339), (*u).GetProfilePhoto())
+	currTime := time.Now()
+	log.Println(currTime)
+	res, err := c.DB.Exec(UpdateUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), currTime, (*u).GetProfilePhoto(), (*u).GetDeviceId(), (*u).GetDeviceType())
 	if err != nil {
 		log.Println(err)
 		return nil
 	}
+
 	count, err := res.RowsAffected()
 	if err != nil {
 		panic(err)
 	}
-
 	// unable to update so inserting new record
 	if count == 0 {
 		log.Output(1, "Adding New User")
 		InsertUserQuery := `INSERT INTO users (email, first_name, last_name, updated_at, profile_photo_url)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id`
-		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), time.Now().Format(time.RFC3339), (*u).GetProfilePhoto())
+		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), currTime, (*u).GetProfilePhoto())
 		if err != nil {
 			log.Println(err)
 			return nil
@@ -209,10 +212,10 @@ func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
 }
 
 func (c *DBConnector) RegisterNewUser(u *model.User) *model.User {
-	UpdateUserQuery := `UPDATE users 
-	updated_at = $2 registered = $3 device_id = $4 device_type = $5
+	UpdateUserQuery := `UPDATE users set
+	updated_at = $2, registered = $3, device_id = $4, device_type = $5
 	WHERE email = $1`
-	res, err := c.DB.Exec(UpdateUserQuery, (*u).GetEmail(), time.Now().Format(time.RFC3339), (*u).Registered, (*u).GetDeviceId(), (*u).GetDeviceType())
+	res, err := c.DB.Exec(UpdateUserQuery, (*u).GetEmail(), time.Now(), (*u).Registered, (*u).GetDeviceId(), (*u).GetDeviceType())
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -228,7 +231,7 @@ func (c *DBConnector) RegisterNewUser(u *model.User) *model.User {
 		InsertUserQuery := `INSERT INTO users (email, updated_at, registered, device_id, device_type)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id`
-		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), time.Now().Format(time.RFC3339), (*u).Registered, (*u).GetDeviceId(), (*u).GetDeviceType())
+		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), time.Now(), (*u).Registered, (*u).GetDeviceId(), (*u).GetDeviceType())
 		if err != nil {
 			log.Println(err)
 			return nil

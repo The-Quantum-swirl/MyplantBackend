@@ -1,9 +1,14 @@
 package model
 
-import "time"
+import (
+	"log"
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
-	ID              int       `json:"id"`
+	ID              uuid.UUID `json:"id"`
 	Email           string    `json:"email"`
 	DeviceId        string    `json:"deviceId"`
 	DeviceType      string    `json:"deviceType"`
@@ -16,8 +21,8 @@ type User struct {
 }
 
 type UserImpl interface {
-	GetId() int
-	SetId(id int)
+	GetId() uuid.UUID
+	SetId(id uuid.UUID)
 	GetEmail() string
 	SetEmail(Email string)
 	GetName() string
@@ -37,23 +42,25 @@ type UserImpl interface {
 
 func NewUser(Email string) *User {
 	u := &User{
+		ID:              uuid.New(),
 		Email:           "",
-		DeviceId:        "",
-		DeviceType:      "",
+		DeviceId:        "default",
+		DeviceType:      "default",
 		FirstName:       "",
 		LastName:        "",
 		ProfilePhotoUrl: "",
 		MobileNumber:    "",
 	}
 	u.SetEmail(Email)
+	log.Output(1, u.GetId().String())
 	return u
 }
 
-func (u *User) SetId(id int) {
+func (u *User) SetId(id uuid.UUID) {
 	u.ID = id
 }
 
-func (u *User) GetId() int {
+func (u *User) GetId() uuid.UUID {
 	return u.ID
 }
 
