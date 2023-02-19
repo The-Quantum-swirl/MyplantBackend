@@ -43,15 +43,16 @@ type UserImpl interface {
 func NewUser(Email string) *User {
 	u := &User{
 		ID:              uuid.New(),
-		Email:           "",
+		Email:           Email,
 		DeviceId:        "default",
 		DeviceType:      "default",
 		FirstName:       "",
 		LastName:        "",
+		UpdatedAt:       time.Now(),
 		ProfilePhotoUrl: "",
 		MobileNumber:    "",
+		Registered:      false,
 	}
-	u.SetEmail(Email)
 	log.Output(1, u.GetId().String())
 	return u
 }

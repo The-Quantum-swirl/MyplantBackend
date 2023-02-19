@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MYPLANTBACKEND/common"
 	"MYPLANTBACKEND/model"
 	"MYPLANTBACKEND/service"
 	"log"
@@ -16,20 +17,26 @@ type UserRequestBody struct {
 	LastName  string
 }
 
-func getTodos(context *gin.Context, dbService *service.DBConnector) {
+func getTodos(c *gin.Context, dbService *service.DBConnector) {
 	res := dbService.GetAllUser()
 	log.Output(2, "get all user call executed")
 
 	if res == nil {
-		context.IndentedJSON(http.StatusBadGateway, "Unable to fetch Users")
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "Unable to fetch Users",
+		})
 	} else {
-		context.IndentedJSON(http.StatusOK, res)
+		c.IndentedJSON(http.StatusOK, gin.H{
+			"code":    http.StatusOK,
+			"message": res,
+		})
 	}
 }
 
-func saveUserDetails(context *gin.Context, dbService *service.DBConnector) {
+func saveUserDetails(c *gin.Context, dbService *service.DBConnector) {
 	var requestBody UserRequestBody
-	if err := context.BindJSON(&requestBody); err != nil {
+	if err := c.BindJSON(&requestBody); err != nil {
 		log.Output(1, err.Error())
 	}
 
@@ -37,11 +44,18 @@ func saveUserDetails(context *gin.Context, dbService *service.DBConnector) {
 	userToBeSaved.SetName(requestBody.FirstName, requestBody.LastName)
 	userToBeSaved.SetProfilePhoto(requestBody.PhotoUrl)
 	userToBeSaved.RegisterIt()
-	userToBeSaved.SetDevice("default","default")
+
 	if dbService.SaveNewUser(userToBeSaved) != nil {
-		context.IndentedJSON(http.StatusOK, "Saved")
+		c.IndentedJSON(http.StatusOK, gin.H{
+			"code":    http.StatusOK,
+			"userId":  userToBeSaved.GetId(),
+			"message": "Saved",
+		})
 	} else {
-		context.IndentedJSON(http.StatusInternalServerError, "Unable to update")
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "Unable to update",
+		})
 	}
 }
 
@@ -55,13 +69,28 @@ func findUserByEmailId(context *gin.Context, dbService *service.DBConnector, ema
 	}
 }
 
-func findUserById(context *gin.Context, dbService *service.DBConnector, ID string) {
+func findUserById(c *gin.Context, dbService *service.DBConnector, ID string) {
+	// validation
+	if !common.IsValidUUID(ID) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadGateway,
+			"message": ID + " is not a valid Id",
+		})
+		return
+	}
+	// search for user
 	res := dbService.GetUserByID(&ID)
 
 	if res == nil {
-		context.IndentedJSON(http.StatusBadGateway, "An error occured in Finding User for ID : "+ID)
+		c.IndentedJSON(http.StatusBadGateway, gin.H{
+			"code":    http.StatusBadGateway,
+			"message": "An error occured in Finding User for ID : " + ID,
+		})
 	} else {
-		context.IndentedJSON(http.StatusOK, res)
+		c.IndentedJSON(http.StatusOK, gin.H{
+			"code": http.StatusOK,
+			"user": res,
+		})
 	}
 }
 
@@ -81,7 +110,7 @@ func main() {
 	router := gin.Default()
 
 	//paths
-	router.GET("/todos", func(context *gin.Context) {
+	router.GET("user/getAll", func(context *gin.Context) {
 		getTodos(context, DbCon)
 	})
 
@@ -91,17 +120,17 @@ func main() {
 		context.IndentedJSON(http.StatusOK, "published")
 	})
 
-	router.GET("/fetchUser/:email", func(context *gin.Context) {
+	router.GET("user/getByEmail/:email", func(context *gin.Context) {
 		email := context.Param("email")
 		findUserByEmailId(context, DbCon, email)
 	})
 
-	router.GET("/getUserById/:id", func(context *gin.Context) {
+	router.GET("user/getById/:id", func(context *gin.Context) {
 		ID := context.Param("id")
 		findUserById(context, DbCon, ID)
 	})
 
-	router.POST("/saveUserDetails", func(context *gin.Context) {
+	router.POST("user/save", func(context *gin.Context) {
 		saveUserDetails(context, DbCon)
 	})
 

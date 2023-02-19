@@ -52,7 +52,7 @@ func (c *DBConnector) Start() {
 		log.Println(err)
 	}
 	// max timeout for db connection
-	c.DB.SetConnMaxLifetime(1800 * time.Second)
+	c.DB.SetConnMaxLifetime(1200 * time.Second)
 
 	// Set maximum number of connections in idle connection pool.
 	c.DB.SetMaxIdleConns(5)
@@ -176,37 +176,30 @@ func (c *DBConnector) GetUserByID(ID *string) *model.User {
 	return nil
 }
 
-// save user in db
-func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
-	UpdateUserQuery := `UPDATE users SET
-	first_name = $2, last_name = $3, updated_at = $4, profile_photo_url = $5,device_id=$6,device_type=$7
-	WHERE email = $1`
-	currTime := time.Now()
-	log.Println(currTime)
-	res, err := c.DB.Exec(UpdateUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), currTime, (*u).GetProfilePhoto(), (*u).GetDeviceId(), (*u).GetDeviceType())
+func (c *DBConnector) InsertNewUser(u *model.User) *model.User {
+	log.Output(1, "Inserting New User")
+	InsertUserQuery := `INSERT INTO users (id, email, first_name, last_name, updated_at, profile_photo_url, device_id, device_type, registered, mobile_number)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	RETURNING id`
+	res, err := c.DB.Exec(InsertUserQuery, (*u).GetId(), (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), time.Now(), (*u).GetProfilePhoto(), (*u).GetDeviceId(), (*u).GetDeviceType(), (*u).IsRegistered(), (*u).GetMobileNumber())
 	if err != nil {
 		log.Println(err)
 		return nil
 	}
+	log.Println(res)
+	return u
+}
 
-	count, err := res.RowsAffected()
+// save user in db
+func (c *DBConnector) SaveNewUser(u *model.User) *model.User {
+	UpdateUserQuery := `UPDATE users SET
+	first_name = $2, last_name = $3, updated_at = $4, profile_photo_url = $5
+	WHERE email = $1
+	RETURNING id`
+	err := c.DB.QueryRow(UpdateUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), time.Now(), (*u).GetProfilePhoto()).Scan(&(*u).ID)
 	if err != nil {
-		panic(err)
-	}
-	// unable to update so inserting new record
-	if count == 0 {
-		log.Output(1, "Adding New User")
-		InsertUserQuery := `INSERT INTO users (email, first_name, last_name, updated_at, profile_photo_url)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id`
-		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), (*u).GetFirstName(), (*u).GetLastName(), currTime, (*u).GetProfilePhoto())
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
-	} else {
-		// able to update user
-		log.Output(1, "User Updated Sucessfully")
+		log.Println(err)
+		return c.InsertNewUser(u)
 	}
 	return u
 }
@@ -227,17 +220,8 @@ func (c *DBConnector) RegisterNewUser(u *model.User) *model.User {
 
 	// unable to update so inserting new record
 	if count == 0 {
-		log.Output(1, "Adding New User")
-		InsertUserQuery := `INSERT INTO users (email, updated_at, registered, device_id, device_type)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id`
-		_, err := c.DB.Exec(InsertUserQuery, (*u).GetEmail(), time.Now(), (*u).Registered, (*u).GetDeviceId(), (*u).GetDeviceType())
-		if err != nil {
-			log.Println(err)
-			return nil
-		}
+		return c.InsertNewUser(u)
 	} else {
-		// able to update user
 		log.Output(1, "User Updated Sucessfully")
 	}
 	return u
