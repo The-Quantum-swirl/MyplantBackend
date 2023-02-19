@@ -85,8 +85,6 @@ func (c *DBConnector) HandleRegisterFromNodeDb(email, clientId string) error {
 		newUser.RegisterIt()
 		c.RegisterNewUser(newUser)
 	}
-
-	defer c.DB.Close()
 	return nil
 }
 
