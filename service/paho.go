@@ -30,6 +30,7 @@ func processNodeRegistration(msg MQTT.Message) {
 		log.Println("Error unmarshaling JSON:", err)
 		return
 	}
+	det.Email = strings.ToLower(det.Email)
 	DbMG.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
 

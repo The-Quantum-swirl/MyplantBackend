@@ -6,7 +6,7 @@ import (
 	"MYPLANTBACKEND/service"
 	"log"
 	"net/http"
-
+	"strings"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,7 +40,7 @@ func saveUserDetails(c *gin.Context, dbService *service.DBConnector) {
 		log.Output(1, err.Error())
 	}
 
-	userToBeSaved := model.NewUser(requestBody.Email)
+	userToBeSaved := model.NewUser(strings.ToLower(requestBody.Email))
 	userToBeSaved.SetName(requestBody.FirstName, requestBody.LastName)
 	userToBeSaved.SetProfilePhoto(requestBody.PhotoUrl)
 	userToBeSaved.RegisterIt()
@@ -121,7 +121,7 @@ func main() {
 	})
 
 	router.GET("user/getByEmail/:email", func(context *gin.Context) {
-		email := context.Param("email")
+		email := strings.ToLower(context.Param("email"))
 		findUserByEmailId(context, DbCon, email)
 	})
 

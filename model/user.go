@@ -3,7 +3,7 @@ package model
 import (
 	"log"
 	"time"
-
+	"strings"
 	"github.com/google/uuid"
 )
 
@@ -43,7 +43,7 @@ type UserImpl interface {
 func NewUser(Email string) *User {
 	u := &User{
 		ID:              uuid.New(),
-		Email:           Email,
+		Email:           strings.ToLower(Email),
 		DeviceId:        "default",
 		DeviceType:      "default",
 		FirstName:       "",

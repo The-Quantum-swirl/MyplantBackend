@@ -34,8 +34,8 @@ func (c *DBConnector) Start() {
 	dbname = os.Getenv("DB_NAME")
 	dbport = os.Getenv("DB_PORT")
 	// sslmode=disable
-	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", connectionName, dbport, dbuser, dbpassword, dbname)
-	// connString := "postgresql://postgres:postgres@localhost/postgres?sslmode=disable"
+	// connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", connectionName, dbport, dbuser, dbpassword, dbname)
+	connString := "postgresql://postgres:postgres@localhost/postgres?sslmode=disable"
 	log.Print(connString)
 	var err error
 
