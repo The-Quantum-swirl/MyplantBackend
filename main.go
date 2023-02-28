@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -94,6 +95,39 @@ func findUserById(c *gin.Context, dbService *service.DBConnector, ID string) {
 	}
 }
 
+func saveClientSecret(c *gin.Context, dbService *service.DBConnector, ID string, ClientUserId string) {
+	if !common.IsValidUUID(ID) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadGateway,
+			"message": ID + " is not a valid Id",
+		})
+		return
+	}
+
+	res := dbService.UpdateClientUserId(&ID, &ClientUserId)
+	log.Output(1, res)
+	if res == "updated successfully" {
+		reusableResponse(c, "Client User ID updated Successfully", 1)
+	} else {
+		reusableResponse(c, "Failed to update Client USer Id", 0)
+	}
+}
+
+func reusableResponse(c *gin.Context, message string, selector int) {
+	if selector == 0 {
+		c.IndentedJSON(http.StatusBadGateway, gin.H{
+			"code":    http.StatusBadGateway,
+			"message": message,
+		})
+	} else {
+		c.IndentedJSON(http.StatusOK, gin.H{
+			"code": http.StatusOK,
+			"user": message,
+		})
+	}
+
+}
+
 func main() {
 
 	// gin.SetMode(gin.ReleaseMode)
@@ -132,6 +166,12 @@ func main() {
 
 	router.POST("user/save", func(context *gin.Context) {
 		saveUserDetails(context, DbCon)
+	})
+
+	router.GET("user/notification/:ClientUserId/:id", func(context *gin.Context) {
+		ID := context.Param("id")
+		ClientUserId := context.Param("ClientUserId")
+		saveClientSecret(context, DbCon, ID, ClientUserId)
 	})
 
 	router.Run(":8080")

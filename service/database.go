@@ -34,8 +34,8 @@ func (c *DBConnector) Start() {
 	dbname = os.Getenv("DB_NAME")
 	dbport = os.Getenv("DB_PORT")
 	// sslmode=disable
-	// connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", connectionName, dbport, dbuser, dbpassword, dbname)
-	connString := "postgresql://postgres:postgres@localhost/postgres?sslmode=disable"
+	connString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s", connectionName, dbport, dbuser, dbpassword, dbname)
+	// connString := "postgresql://postgres:postgres@localhost/postgres?sslmode=disable"
 	log.Print(connString)
 	var err error
 
@@ -102,7 +102,7 @@ func (c *DBConnector) GetAllUser() []*model.User {
 
 	var UserList []*model.User
 	for rows.Next() {
-		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber, &res.ClientUserId)
 		// initialize new user
 		newUser := model.NewUser(res.Email)
 		newUser.SetId(res.ID)
@@ -112,6 +112,7 @@ func (c *DBConnector) GetAllUser() []*model.User {
 		newUser.SetProfilePhoto(res.ProfilePhotoUrl)
 		log.Println(res.UpdatedAt.GoString())
 		newUser.SetUpdatedAt(res.UpdatedAt)
+		newUser.SetClientUserId(res.ClientUserId)
 		// return the first user found
 		UserList = append(UserList, newUser)
 	}
@@ -158,7 +159,7 @@ func (c *DBConnector) GetUserByID(ID *string) *model.User {
 	var res model.User
 	defer rows.Close()
 	for rows.Next() {
-		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber)
+		rows.Scan(&res.ID, &res.Email, &res.DeviceId, &res.DeviceType, &res.FirstName, &res.LastName, &res.UpdatedAt, &res.ProfilePhotoUrl, &res.Registered, &res.MobileNumber, &res.ClientUserId)
 		// initialize new user
 		newUser := model.NewUser(res.Email)
 		newUser.SetId(res.ID)
@@ -223,4 +224,14 @@ func (c *DBConnector) RegisterNewUser(u *model.User) *model.User {
 		log.Output(1, "User Updated Sucessfully")
 	}
 	return u
+}
+func (c *DBConnector) UpdateClientUserId(ID *string, clientUserId *string) string {
+	UpdateUserQuery := `UPDATE users SET client_user_id = $2 WHERE id = $1`
+	rows, err := c.DB.Query(UpdateUserQuery, ID, clientUserId)
+	if err != nil {
+		log.Println(err)
+		return "failed"
+	}
+	defer rows.Close()
+	return "updated successfully"
 }
