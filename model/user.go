@@ -133,7 +133,7 @@ func (u *User) GetMobileNumber() string {
 }
 
 func (u *User) SetClientUserId(clientUserId string) {
-	u.MobileNumber = clientUserId
+	u.ClientUserId = clientUserId
 }
 
 func (u *User) GetClientUserId() string {
