@@ -2,6 +2,7 @@ package model
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ type User struct {
 	ProfilePhotoUrl string    `json:"profilePhotoUrl"`
 	Registered      bool      `json:"registered"`
 	MobileNumber    string    `json:"mobileNumber"`
+	ClientUserId    string    `json:"clientUserId"`
 }
 
 type UserImpl interface {
@@ -38,12 +40,14 @@ type UserImpl interface {
 	GetProfilePhoto() string
 	SetMobileNumber(no string)
 	GetMobileNumber() string
+	SetClientUserId(clientUserId string)
+	GetClientUserId() string
 }
 
 func NewUser(Email string) *User {
 	u := &User{
 		ID:              uuid.New(),
-		Email:           Email,
+		Email:           strings.ToLower(Email),
 		DeviceId:        "default",
 		DeviceType:      "default",
 		FirstName:       "",
@@ -52,6 +56,7 @@ func NewUser(Email string) *User {
 		ProfilePhotoUrl: "",
 		MobileNumber:    "",
 		Registered:      false,
+		ClientUserId:    "null",
 	}
 	log.Output(1, u.GetId().String())
 	return u
@@ -125,6 +130,14 @@ func (u *User) SetMobileNumber(no string) {
 
 func (u *User) GetMobileNumber() string {
 	return u.MobileNumber
+}
+
+func (u *User) SetClientUserId(clientUserId string) {
+	u.ClientUserId = clientUserId
+}
+
+func (u *User) GetClientUserId() string {
+	return u.ClientUserId
 }
 
 func (u *User) SetUpdatedAt(uat time.Time) {
