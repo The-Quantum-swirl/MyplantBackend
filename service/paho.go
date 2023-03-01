@@ -19,7 +19,7 @@ var handleMQTTMessage MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Me
 	log.Output(1, "MSG: "+string(msg.Payload()))
 	log.Println("this is result msg" + strconv.Itoa(knt))
 	message := fmt.Sprintf("Message: %s", msg.Payload())
-	httpReq(message)
+	httpReq("www.example.com", message)
 	knt++
 }
 
@@ -33,6 +33,27 @@ func processNodeRegistration(msg MQTT.Message) {
 	det.Email = strings.ToLower(det.Email)
 	DbMG.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
+func sendNotification(msg MQTT.Message) {
+	var notif Notification
+	err := json.Unmarshal([]byte(msg.Payload()), &notif)
+	if err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+		return
+	}
+	clientUserId := DbMG.getClientUserId(&notif.ClientId)
+	if clientUserId != "failed to fetch client User ID" {
+		finalurl := strings.Replace(baseUrl, "clientUserIDPlaceholder", clientUserId, -1)
+		if notif.Status == "off" {
+			httpReq(finalurl, "Water Turned OFF")
+
+		} else {
+			httpReq(finalurl, "Water Turned ON")
+
+		}
+	} else {
+		fmt.Println("Skipping sending notifications")
+	}
+}
 
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	log.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
@@ -41,6 +62,7 @@ var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Me
 		processNodeRegistration(msg)
 	} else if strings.Compare("notification-service", msg.Topic()) == 0 {
 		log.Println("got message in notification channel")
+		sendNotification(msg)
 	}
 }
 
@@ -63,12 +85,16 @@ type Detail struct {
 	Email    string `json:"email"`
 	ClientId string `json:"clientId"`
 }
+type Notification struct {
+	ClientId string `json:clientId`
+	Status   string `json:status`
+}
 
 const broker string = "tls://fc61e06e9fda466eb883fa570fe337d4.s1.eu.hivemq.cloud"
 const port int = 8883
 const username string = "QuantumWaterBot"
 const password string = "Quantum#123"
-const baseUrl string = "https://api.telegram.org/bot1638003720:AAG1JD9I4XjQYEkYiUTa7An3rOGiVk9sq4M/sendMessage?chat_id=-568647766&text="
+const baseUrl string = "https://api.telegram.org/bot6262793721:AAH3Q3dVEXJv2sOHB1b20QxzERiDoZUmsQQ/sendMessage?chat_id=clientUserIDPlaceholder&text="
 
 var connection string = "backend1"
 
@@ -108,8 +134,8 @@ func (c *MQTTConnector) Start() {
 	// start the connection routine
 	log.Printf("MQTT Will connect to the broker %v\n", broker)
 }
-func httpReq(message string) {
-	url1 := fmt.Sprintf(baseUrl + message)
+func httpReq(url string, message string) {
+	url1 := fmt.Sprintf(url + message)
 	req, _ := http.NewRequest("GET", url1, nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

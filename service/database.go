@@ -235,3 +235,16 @@ func (c *DBConnector) UpdateClientUserId(ID *string, clientUserId *string) strin
 	defer rows.Close()
 	return "updated successfully"
 }
+
+func (c *DBConnector) getClientUserId(deviceId *string) string {
+	var client_user_id string
+	UpdateUserQuery := `SELECT client_user_id from users WHERE device_id = $1`
+	err := c.DB.QueryRow(UpdateUserQuery, deviceId).Scan(&client_user_id)
+	if err != nil {
+		log.Println(err)
+		return "failed to fetch client User ID"
+	}
+	fmt.Printf("The client Id is:")
+	log.Output(1, client_user_id)
+	return client_user_id
+}
