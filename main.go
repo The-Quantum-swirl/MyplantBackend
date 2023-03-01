@@ -74,7 +74,7 @@ func main() {
 	DbCon.Start()
 
 	// setting mqtt connection
-	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service", DBCon: DbCon}
+	MqttCon := &service.MQTTConnector{Client: nil, SubCh: "register-service", NotifCh: "notification-service", DBCon: DbCon}
 	MqttCon.Start()
 
 	// setting router

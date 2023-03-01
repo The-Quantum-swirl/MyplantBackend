@@ -37,6 +37,8 @@ var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Me
 	if strings.Compare("register-service", msg.Topic()) == 0 {
 		log.Println("saving Device Id to DB")
 		processNodeRegistration(msg)
+	} else if strings.Compare("notification-service", msg.Topic()) == 0 {
+		log.Println("got message in notification channel")
 	}
 }
 
@@ -50,9 +52,10 @@ var connectLostHandler MQTT.ConnectionLostHandler = func(client MQTT.Client, err
 }
 
 type MQTTConnector struct {
-	Client MQTT.Client
-	SubCh  string
-	DBCon  *DBConnector
+	Client  MQTT.Client
+	SubCh   string
+	NotifCh string
+	DBCon   *DBConnector
 }
 type Detail struct {
 	Email    string `json:"email"`
@@ -82,6 +85,10 @@ func (c *MQTTConnector) Start() {
 	opts.OnConnect = func(cl MQTT.Client) {
 		// on connect will subscribe to default topic
 		if token := cl.Subscribe(c.SubCh, 0, messagePubHandler); token.Wait() && token.Error() != nil {
+			panic(token.Error())
+		}
+		// on connect will subscribe to notification topic
+		if token := cl.Subscribe(c.NotifCh, 0, messagePubHandler); token.Wait() && token.Error() != nil {
 			panic(token.Error())
 		}
 	}
