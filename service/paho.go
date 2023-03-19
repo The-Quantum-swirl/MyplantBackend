@@ -134,6 +134,42 @@ func (c *MQTTConnector) Start() {
 	// start the connection routine
 	log.Printf("MQTT Will connect to the broker %v\n", broker)
 }
+
+type DeviceReqBody struct {
+	Action string `json:"action"`
+}
+
+func (c *MQTTConnector) CheckStatus(deviceId string) bool {
+	var listenService string = "listenService-" + deviceId
+	var postService string = "postService-" + deviceId
+
+	var payload DeviceReqBody
+	payload.Action = "status"
+
+	var res bool = false
+
+	// subscribe
+	if token := c.Client.Subscribe(postService, 1, func(client MQTT.Client, msg MQTT.Message) {
+		log.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
+		if strings.Compare(postService, msg.Topic()) == 0 {
+			res = true
+		}
+
+	}); token.Wait() && token.Error() != nil {
+		panic(token.Error())
+	}
+
+	// publish
+	c.Client.Publish(listenService, MQTT.NewClientOptions().WillQos, false, payload)
+
+	time.Sleep(3 * time.Second) // sleep for 3 seconds
+
+	// unsubscribe
+	c.Client.Unsubscribe(postService)
+
+	return res
+}
+
 func httpReq(url string, message string) {
 	url1 := fmt.Sprintf(url + message)
 	req, _ := http.NewRequest("GET", url1, nil)

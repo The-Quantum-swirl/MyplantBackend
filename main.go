@@ -95,6 +95,26 @@ func findUserById(c *gin.Context, dbService *service.DBConnector, ID string) {
 	}
 }
 
+func findDeviceStatus(c *gin.Context, mqttCon *service.MQTTConnector, dbService *service.DBConnector, ID string) {
+	// validation
+	if !common.IsValidUUID(ID) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{
+			"code":    http.StatusBadGateway,
+			"message": ID + " is not a valid Id",
+		})
+		return
+	}
+	// search for user
+	res := dbService.GetUserByID(&ID)
+
+	result := mqttCon.CheckStatus(res.GetDeviceId())
+
+	c.IndentedJSON(http.StatusBadGateway, gin.H{
+		"code":   http.StatusOK,
+		"online": result,
+	})
+}
+
 func saveClientSecret(c *gin.Context, dbService *service.DBConnector, ID string, ClientUserId string) {
 	if !common.IsValidUUID(ID) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{
@@ -162,6 +182,11 @@ func main() {
 	router.GET("user/getById/:id", func(context *gin.Context) {
 		ID := context.Param("id")
 		findUserById(context, DbCon, ID)
+	})
+
+	router.GET("user/online/:id", func(context *gin.Context) {
+		ID := context.Param("id")
+		findDeviceStatus(context, MqttCon, DbCon, ID)
 	})
 
 	router.POST("user/save", func(context *gin.Context) {
