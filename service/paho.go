@@ -46,6 +46,8 @@ func sendNotification(msg MQTT.Message) {
 		if notif.Status == "off" {
 			httpReq(finalurl, "Water Turned OFF")
 
+		}else if notif.Status == "started"{
+			httpReq(finalurl, "Watering Device Started")
 		} else {
 			httpReq(finalurl, "Water Turned ON")
 
