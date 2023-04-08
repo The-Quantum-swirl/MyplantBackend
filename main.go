@@ -4,11 +4,20 @@ import (
 	"MYPLANTBACKEND/common"
 	"MYPLANTBACKEND/model"
 	"MYPLANTBACKEND/service"
-	"log"
+	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"log"
+
+	"cloud.google.com/go/storage"
 	"github.com/gin-gonic/gin"
+
+	"google.golang.org/appengine"
 )
 
 type UserRequestBody struct {
@@ -148,6 +157,87 @@ func reusableResponse(c *gin.Context, message string, selector int) {
 
 }
 
+type demo struct {
+	client     *storage.Client
+	bucketName string
+	bucket     *storage.BucketHandle
+
+	w   io.Writer
+	ctx context.Context
+	// cleanUp is a list of filenames that need cleaning up at the end of the demo.
+	cleanUp []string
+	// failed indicates that one or more of the demo steps failed.
+	failed bool
+}
+
+// readFile reads the named file in Google Cloud Storage.
+func (d *demo) readFile(fileName string) {
+	io.WriteString(d.w, "\nAbbreviated file content (first line and last 1K):\n")
+
+	rc, err := d.bucket.Object(fileName).NewReader(d.ctx)
+	if err != nil {
+		log.Println("readFile: unable to open file from bucket %q, file %q: %v", d.bucketName, fileName, err)
+		return
+	}
+	defer rc.Close()
+	slurp, err := ioutil.ReadAll(rc)
+	if err != nil {
+		log.Println("readFile: unable to read data from bucket %q, file %q: %v", d.bucketName, fileName, err)
+		return
+	}
+
+	fmt.Fprintf(d.w, "%s\n", bytes.SplitN(slurp, []byte("\n"), 2)[0])
+	if len(slurp) > 1024 {
+		fmt.Fprintf(d.w, "...%s\n", slurp[len(slurp)-1024:])
+	} else {
+		fmt.Fprintf(d.w, "%s\n", slurp)
+	}
+}
+
+// readFile reads the named file in Google Cloud Storage.
+func readFile(c *gin.Context, fileName string) {
+
+	ctx := appengine.NewContext(c.Request)
+
+	bucket := "myplantapk"
+
+	log.Println(bucket)
+
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		log.Println(ctx, "failed to create client: %v", err)
+		return
+	}
+	defer client.Close()
+
+	c.Writer.Header().Set("Content-Type", "application/vnd.android.package-archive; charset=utf-8")
+	// log.Println("Demo GCS Application running from Version: %v\n", appengine.VersionID(ctx))
+	// log.Println("Using bucket name: %v\n\n", bucket)
+
+	buf := &bytes.Buffer{}
+	d := &demo{
+		w:          buf,
+		ctx:        ctx,
+		client:     client,
+		bucket:     client.Bucket(bucket),
+		bucketName: bucket,
+	}
+
+	d.readFile(fileName)
+	log.Println("reada file")
+
+	if d.failed {
+		c.Writer.WriteHeader(http.StatusInternalServerError)
+		buf.WriteTo(c.Writer)
+		log.Println("Demo failed.")
+	} else {
+		c.Writer.WriteHeader(http.StatusOK)
+		buf.WriteTo(c.Writer)
+		fmt.Println("Demo succeeded.")
+	}
+
+}
+
 func main() {
 
 	// gin.SetMode(gin.ReleaseMode)
@@ -197,6 +287,18 @@ func main() {
 		ID := context.Param("id")
 		ClientUserId := context.Param("ClientUserId")
 		saveClientSecret(context, DbCon, ID, ClientUserId)
+	})
+
+	router.GET("download/apk/:name", func(context *gin.Context) {
+		fileName := context.Param("name")
+		readFile(context, fileName)
+	})
+
+	router.GET("notification/:id", func(context *gin.Context) {
+		deviceId := context.Param("id")
+		var deviceIds []string
+		deviceIds = append(deviceIds, deviceId)
+		service.SendPushNotification(deviceIds)
 	})
 
 	router.Run(":8080")
