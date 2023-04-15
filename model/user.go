@@ -9,17 +9,18 @@ import (
 )
 
 type User struct {
-	ID              uuid.UUID `json:"id"`
-	Email           string    `json:"email"`
-	DeviceId        string    `json:"deviceId"`
-	DeviceType      string    `json:"deviceType"`
-	FirstName       string    `json:"firstName"`
-	LastName        string    `json:"lastName"`
-	UpdatedAt       time.Time `json:"updatedAt"`
-	ProfilePhotoUrl string    `json:"profilePhotoUrl"`
-	Registered      bool      `json:"registered"`
-	MobileNumber    string    `json:"mobileNumber"`
-	ClientUserId    string    `json:"clientUserId"`
+	ID                uuid.UUID `json:"id"`
+	Email             string    `json:"email"`
+	DeviceId          string    `json:"deviceId"`
+	DeviceType        string    `json:"deviceType"`
+	FirstName         string    `json:"firstName"`
+	LastName          string    `json:"lastName"`
+	UpdatedAt         time.Time `json:"updatedAt"`
+	ProfilePhotoUrl   string    `json:"profilePhotoUrl"`
+	Registered        bool      `json:"registered"`
+	MobileNumber      string    `json:"mobileNumber"`
+	ClientUserId      string    `json:"clientUserId"`
+	NotificationToken string    `json:"notificationToken"`
 }
 
 type UserImpl interface {
@@ -42,21 +43,24 @@ type UserImpl interface {
 	GetMobileNumber() string
 	SetClientUserId(clientUserId string)
 	GetClientUserId() string
+	SetNotificationToken(token string)
+	GetNotificationToken() string
 }
 
 func NewUser(Email string) *User {
 	u := &User{
-		ID:              uuid.New(),
-		Email:           strings.ToLower(Email),
-		DeviceId:        "default",
-		DeviceType:      "default",
-		FirstName:       "",
-		LastName:        "",
-		UpdatedAt:       time.Now(),
-		ProfilePhotoUrl: "",
-		MobileNumber:    "",
-		Registered:      false,
-		ClientUserId:    "null",
+		ID:                uuid.New(),
+		Email:             strings.ToLower(Email),
+		DeviceId:          "default",
+		DeviceType:        "default",
+		FirstName:         "",
+		LastName:          "",
+		UpdatedAt:         time.Now(),
+		ProfilePhotoUrl:   "",
+		MobileNumber:      "",
+		Registered:        false,
+		ClientUserId:      "null",
+		NotificationToken: "",
 	}
 	log.Output(1, u.GetId().String())
 	return u
@@ -142,4 +146,12 @@ func (u *User) GetClientUserId() string {
 
 func (u *User) SetUpdatedAt(uat time.Time) {
 	u.UpdatedAt = uat
+}
+
+func (u *User) SetNotificationToken(token string) {
+	u.NotificationToken = token
+}
+
+func (u *User) GetNotificationToken() string {
+	return u.NotificationToken
 }

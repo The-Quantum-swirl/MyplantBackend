@@ -25,6 +25,7 @@ type UserRequestBody struct {
 	PhotoUrl  string
 	FirstName string
 	LastName  string
+	Token     string
 }
 
 func getTodos(c *gin.Context, dbService *service.DBConnector) {
@@ -54,6 +55,7 @@ func saveUserDetails(c *gin.Context, dbService *service.DBConnector) {
 	userToBeSaved.SetName(requestBody.FirstName, requestBody.LastName)
 	userToBeSaved.SetProfilePhoto(requestBody.PhotoUrl)
 	userToBeSaved.RegisterIt()
+	userToBeSaved.SetNotificationToken(requestBody.Token)
 
 	if dbService.SaveNewUser(userToBeSaved) != nil {
 		c.IndentedJSON(http.StatusOK, gin.H{
@@ -298,7 +300,7 @@ func main() {
 		deviceId := context.Param("id")
 		var deviceIds []string
 		deviceIds = append(deviceIds, deviceId)
-		service.SendPushNotification(deviceIds)
+		service.SendPushNotification(deviceIds, "Test", "test successfull")
 	})
 
 	router.Run(":8080")

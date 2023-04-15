@@ -33,6 +33,8 @@ func processNodeRegistration(msg MQTT.Message) {
 	det.Email = strings.ToLower(det.Email)
 	DbMG.HandleRegisterFromNodeDb(det.Email, det.ClientId)
 }
+
+// telegram notification
 func sendNotification(msg MQTT.Message) {
 	var notif Notification
 	err := json.Unmarshal([]byte(msg.Payload()), &notif)
@@ -46,7 +48,7 @@ func sendNotification(msg MQTT.Message) {
 		if notif.Status == "off" {
 			httpReq(finalurl, "Water Turned OFF")
 
-		}else if notif.Status == "started"{
+		} else if notif.Status == "started" {
 			httpReq(finalurl, "Watering Device Started")
 		} else {
 			httpReq(finalurl, "Water Turned ON")
@@ -57,14 +59,42 @@ func sendNotification(msg MQTT.Message) {
 	}
 }
 
+// Android notification using firebase
+func SendAndroidNotification(msg MQTT.Message) {
+	var notificationTime string = time.Now().Format("3:4:05 PM")
+
+	var notif Notification
+	// unmarshalling
+	err := json.Unmarshal([]byte(msg.Payload()), &notif)
+	if err != nil {
+		log.Println("Error unmarshaling JSON:", err)
+		return
+	}
+	// fetching customer device token
+	deviceToken := DbMG.getAndroidDeviceToken(&notif.ClientId)
+
+	switch notif.Status {
+	case "off":
+		PushNotification(deviceToken, "Water Turned Off", "At "+notificationTime)
+	case "on":
+		PushNotification(deviceToken, "Water Turned On", "At "+notificationTime)
+	case "started":
+		PushNotification(deviceToken, "Scheduled Watering Started", "At "+notificationTime)
+	}
+
+}
+
 var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 	log.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
+
 	if strings.Compare("register-service", msg.Topic()) == 0 {
 		log.Println("saving Device Id to DB")
 		processNodeRegistration(msg)
+
 	} else if strings.Compare("notification-service", msg.Topic()) == 0 {
 		log.Println("got message in notification channel")
 		sendNotification(msg)
+		SendAndroidNotification(msg)
 	}
 }
 
