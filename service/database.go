@@ -70,7 +70,6 @@ func ScanUser(rows *sql.Rows, res model.User) *model.User {
 	newUser.SetMobileNumber(res.MobileNumber)
 	newUser.SetName(res.FirstName, res.LastName)
 	newUser.SetProfilePhoto(res.ProfilePhotoUrl)
-	log.Println(res.UpdatedAt.GoString())
 	newUser.SetUpdatedAt(res.UpdatedAt)
 	newUser.SetClientUserId(res.ClientUserId)
 	newUser.SetNotificationToken(res.NotificationToken)
@@ -222,16 +221,15 @@ func (c *DBConnector) UpdateClientUserId(ID *string, clientUserId *string) strin
 }
 
 func (c *DBConnector) getClientUserId(deviceId *string) string {
-	var client_user_id string
+	var clientUserId string
 	UpdateUserQuery := `SELECT client_user_id from users WHERE device_id = $1`
-	err := c.DB.QueryRow(UpdateUserQuery, deviceId).Scan(&client_user_id)
+	err := c.DB.QueryRow(UpdateUserQuery, deviceId).Scan(&clientUserId)
 	if err != nil {
 		log.Println(err)
 		return "failed to fetch client User ID"
 	}
-	fmt.Printf("The client Id is:")
-	log.Output(1, client_user_id)
-	return client_user_id
+	log.Printf("clientUserId: {%s}", clientUserId)
+	return clientUserId
 }
 
 func (c *DBConnector) getAndroidDeviceToken(deviceId *string) string {
@@ -241,5 +239,6 @@ func (c *DBConnector) getAndroidDeviceToken(deviceId *string) string {
 		log.Println(err)
 		return ""
 	}
+	log.Printf("fetched token: {%s}", token)
 	return token
 }

@@ -13,9 +13,39 @@ import (
 )
 
 func PushNotification(deviceToken string, title string, body string) error {
-	var deviceIds []string
-	deviceIds = append(deviceIds, deviceToken)
-	return SendPushNotification(deviceIds, title, body)
+	decodedKey, err := getDecodedFireBaseKey()
+	if err != nil {
+		return err
+	}
+
+	opts := []option.ClientOption{option.WithCredentialsJSON(decodedKey)}
+
+	app, err := firebase.NewApp(context.TODO(), nil, opts...)
+	if err != nil {
+		log.Fatalln(err)
+		return err
+	}
+
+	fcmClient, err := app.Messaging(context.TODO())
+	if err != nil {
+		return err
+	}
+
+	response, err := fcmClient.Send(context.TODO(), &messaging.Message{
+		Notification: &messaging.Notification{
+			Title: title,
+			Body:  body,
+		},
+		Token: deviceToken,
+	})
+
+	if err != nil {
+		log.Fatalf("error while pushing %e", err)
+		return err
+	}
+
+	log.Printf("Response : {%s}", response)
+	return nil
 }
 
 func SendPushNotification(deviceTokens []string, title string, body string) error {

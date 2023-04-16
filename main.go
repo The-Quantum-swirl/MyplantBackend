@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"log"
 
@@ -242,8 +243,6 @@ func readFile(c *gin.Context, fileName string) {
 
 func main() {
 
-	// gin.SetMode(gin.ReleaseMode)
-
 	// setting db connection
 	DbCon := &service.DBConnector{DB: nil}
 	DbCon.Start()
@@ -296,11 +295,11 @@ func main() {
 		readFile(context, fileName)
 	})
 
-	router.GET("notification/:id", func(context *gin.Context) {
+	router.GET("notification/send/:id", func(context *gin.Context) {
 		deviceId := context.Param("id")
-		var deviceIds []string
-		deviceIds = append(deviceIds, deviceId)
-		service.SendPushNotification(deviceIds, "Test", "test successfull")
+		var notificationTime string = time.Now().Format("3:4:05 PM")
+		service.PushNotification(deviceId, "Water Turned On", "At "+notificationTime)
+		context.IndentedJSON(http.StatusOK, "pushed")
 	})
 
 	router.Run(":8080")

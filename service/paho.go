@@ -72,6 +72,7 @@ func SendAndroidNotification(msg MQTT.Message) {
 	}
 	// fetching customer device token
 	deviceToken := DbMG.getAndroidDeviceToken(&notif.ClientId)
+	log.Printf("Notifcation Status: [{%s}]", notif.Status)
 
 	switch notif.Status {
 	case "off":
@@ -93,7 +94,7 @@ var messagePubHandler MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Me
 
 	} else if strings.Compare("notification-service", msg.Topic()) == 0 {
 		log.Println("got message in notification channel")
-		sendNotification(msg)
+		// sendNotification(msg)
 		SendAndroidNotification(msg)
 	}
 }
