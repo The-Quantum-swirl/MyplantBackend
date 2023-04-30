@@ -6,22 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
-var knt int
 var DbMG *DBConnector
-var handleMQTTMessage MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	log.Output(1, "MSG: "+string(msg.Payload()))
-	log.Println("this is result msg" + strconv.Itoa(knt))
-	message := fmt.Sprintf("Message: %s", msg.Payload())
-	httpReq("www.example.com", message)
-	knt++
-}
 
 func processNodeRegistration(msg MQTT.Message) {
 	var det Detail
@@ -137,7 +128,6 @@ func (c *MQTTConnector) Start() {
 	log.Println("---------- MQTT started ----------")
 	connectionId := os.Getenv("DB_ID")
 
-	knt = 0
 	// configure the mqtt client
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("%s:%d", broker, port))

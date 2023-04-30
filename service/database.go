@@ -21,8 +21,6 @@ var dbpassword string
 var dbname string
 var dbport string
 
-var saveUserStmt *sql.Stmt
-
 func init() {
 	log.Output(2, "Init main Called ")
 }
