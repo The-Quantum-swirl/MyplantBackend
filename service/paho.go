@@ -191,15 +191,18 @@ func (c *MQTTConnector) CheckStatus(deviceId string) bool {
 	}); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
+	jsonString, err := json.Marshal(payload)
+	if err != nil {
+		panic(err)
+	}
 
 	// publish
-	c.Client.Publish(listenService, MQTT.NewClientOptions().WillQos, false, payload)
+	c.Client.Publish(listenService, 0, false, jsonString)
 
 	time.Sleep(3 * time.Second) // sleep for 3 seconds
 
 	// unsubscribe
 	c.Client.Unsubscribe(postService)
-
 	return res
 }
 

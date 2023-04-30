@@ -122,6 +122,7 @@ func findDeviceStatus(c *gin.Context, mqttCon *service.MQTTConnector, dbService 
 	result := mqttCon.CheckStatus(res.GetDeviceId())
 
 	c.IndentedJSON(http.StatusBadGateway, gin.H{
+	c.IndentedJSON(http.StatusOK, gin.H{
 		"code":   http.StatusOK,
 		"online": result,
 	})
