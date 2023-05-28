@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -118,10 +119,8 @@ func findDeviceStatus(c *gin.Context, mqttCon *service.MQTTConnector, dbService 
 	}
 	// search for user
 	res := dbService.GetUserByID(&ID)
-
 	result := mqttCon.CheckStatus(res.GetDeviceId())
 
-	c.IndentedJSON(http.StatusBadGateway, gin.H{
 	c.IndentedJSON(http.StatusOK, gin.H{
 		"code":   http.StatusOK,
 		"online": result,
@@ -242,6 +241,44 @@ func readFile(c *gin.Context, fileName string) {
 
 }
 
+var logsFilePath = os.Getenv("LOG_FILE_PATH")
+
+// Replace with the path where you want to store the logs file
+
+func uploadLogsHandler(w http.ResponseWriter, r *http.Request) {
+	var LogTime string = time.Now().Format("3:4:05 PM")
+
+	// Read the logs from the request body
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+
+	file, err := os.OpenFile(logsFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		http.Error(w, "Failed to open log file", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+	// Add a newline character before appending the logs
+
+	_, err = file.WriteString("\n" + LogTime + "\n")
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+
+	// Append the logs to the file
+	_, err = file.Write(body)
+	if err != nil {
+		http.Error(w, "Failed to write logs to file", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	fmt.Fprintf(w, "Logs uploaded successfully")
+}
+
 func main() {
 
 	// setting db connection
@@ -301,6 +338,12 @@ func main() {
 		var notificationTime string = time.Now().Format("3:4:05 PM")
 		service.PushNotification(deviceId, "Water Turned On", "At "+notificationTime)
 		context.IndentedJSON(http.StatusOK, "pushed")
+	})
+
+	router.POST("upload_logs", func(context *gin.Context) {
+		uploadLogsHandler(context.Writer, context.Request)
+		context.IndentedJSON(http.StatusOK, "logs saved Succcessfully")
+
 	})
 
 	router.Run(":8080")
