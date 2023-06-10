@@ -168,7 +168,6 @@ type demo struct {
 	w   io.Writer
 	ctx context.Context
 	// cleanUp is a list of filenames that need cleaning up at the end of the demo.
-	cleanUp []string
 	// failed indicates that one or more of the demo steps failed.
 	failed bool
 }
@@ -179,13 +178,13 @@ func (d *demo) readFile(fileName string) {
 
 	rc, err := d.bucket.Object(fileName).NewReader(d.ctx)
 	if err != nil {
-		log.Println("readFile: unable to open file from bucket %q, file %q: %v", d.bucketName, fileName, err)
+		log.Printf("readFile: unable to open file from bucket %q, file %q: %v", d.bucketName, fileName, err)
 		return
 	}
 	defer rc.Close()
 	slurp, err := ioutil.ReadAll(rc)
 	if err != nil {
-		log.Println("readFile: unable to read data from bucket %q, file %q: %v", d.bucketName, fileName, err)
+		log.Printf("readFile: unable to read data from bucket %q, file %q: %v", d.bucketName, fileName, err)
 		return
 	}
 
@@ -254,6 +253,7 @@ func uploadLogsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
+	fmt.Println("Logs File Path : ", logsFilePath)
 
 	file, err := os.OpenFile(logsFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -280,6 +280,13 @@ func uploadLogsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// to:= "mukhar.jain2009@gmail.com"
+	// err := service.SendEmail(to)
+	// if err != nil {
+	// 	fmt.Println("error in sending email")
+	// }else{
+	// 	fmt.Println("sent")
+	// }
 
 	// setting db connection
 	DbCon := &service.DBConnector{DB: nil}
