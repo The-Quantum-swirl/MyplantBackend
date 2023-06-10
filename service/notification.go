@@ -19,7 +19,7 @@ func PushNotification(deviceToken string, title string, body string) error {
 	}
 
 	opts := []option.ClientOption{option.WithCredentialsJSON(decodedKey)}
-
+	// Fatal should be used here as we want the backend to restart when the firebase is not connected
 	app, err := firebase.NewApp(context.TODO(), nil, opts...)
 	if err != nil {
 		log.Fatalln(err)
@@ -40,7 +40,7 @@ func PushNotification(deviceToken string, title string, body string) error {
 	})
 
 	if err != nil {
-		log.Fatalf("error while pushing %e", err)
+		log.Output(1, "Error sending notification:")
 		return err
 	}
 
